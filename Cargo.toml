@@ -1,0 +1,17 @@
+[package]
+name = "rs-win32"
+version = "0.1.0"
+authors = ["varding <https://github.com/varding>"]
+
+[lib]
+name = "win32"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hello"
+path = "src/bin/main.rs"
+
+[dependencies]
+winapi = {version = "*",path = "src/winapi"}
+user32 = {version = "*",path = "src/user32"}
+kernel32={version = "*",path = "src/kernel32"}
