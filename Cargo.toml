@@ -5,7 +5,7 @@ authors = ["varding <https://github.com/varding>"]
 
 [lib]
 name = "win32"
-path = "src/lib.rs"
+path = "src/wtl/lib.rs"
 
 [[bin]]
 name = "hello"
