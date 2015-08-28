@@ -32,14 +32,14 @@ pub fn put_back(t:&mut Thunk){
 }
 
 //a global stores the obj that created a window
-pub fn set_this(p_this:LPCVOID){
+pub fn set_this(p_this:LPVOID){
 	TP.with(|tp|{
 		let mut tp_mut = tp.borrow_mut();
 		tp_mut.set_this(p_this);
 	})
 }
 
-pub fn get_this()->LPCVOID{
+pub fn get_this()->LPVOID{
 	TP.with(|tp|{
 		let mut tp_mut = tp.borrow_mut();
 		tp_mut.get_this()
@@ -57,7 +57,7 @@ pub fn drop_pool(){
 struct ThunkPool {
 	pages	   : Vec<LPVOID>,
     free_thunks: Vec<*mut Thunk>,	//store addrs of all free thunks
-    last_this  : LPCVOID,
+    last_this  : LPVOID,
 }
 
 const PAGE_SIZE: SIZE_T = 4096;
@@ -117,13 +117,13 @@ impl ThunkPool {
 		self.free_thunks.push(t);
 	}
 
-	fn set_this(&mut self,p_this:LPCVOID){
+	fn set_this(&mut self,p_this:LPVOID){
 		self.last_this  = p_this;
 	}
 
-	fn get_this(&mut self) -> LPCVOID {
+	fn get_this(&mut self) -> LPVOID {
 		let t = self.last_this;
-		self.last_this = 0 as LPCVOID;
+		self.last_this = 0 as LPVOID;
 		t
 	}
 }
