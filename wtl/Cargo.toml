@@ -1,0 +1,14 @@
+[package]
+name = "wtl"
+version = "0.1.0"
+authors = ["varding <https://github.com/varding>"]
+
+[lib]
+name = "wtl"
+path = "src/lib.rs"
+
+[dependencies]
+winapi = {version = "*",path = "../winapi"}
+user32 = {version = "*",path = "../user32"}
+kernel32={version = "*",path = "../kernel32"}
+shell32={version = "*",path = "../shell32"}

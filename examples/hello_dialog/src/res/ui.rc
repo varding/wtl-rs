@@ -1,0 +1,28 @@
+#include <windows.h>
+#include <commctrl.h>
+#include <richedit.h>
+#include "resource.h"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+LANGUAGE 4, 2
+IDD_MAINDLG DIALOGEX 0, 0, 464, 247
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Hello Dialog"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "确定",IDOK,267,11,50,14
+    PUSHBUTTON      "取消",IDCANCEL,319,11,50,14
+    PUSHBUTTON      "打开",IDC_BTN_OPEN,169,11,50,14
+    EDITTEXT        IDC_EDT_PORT,65,11,95,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "端口：",IDC_STATIC,29,14,25,8
+    CONTROL         "",IDC_LST_CONSOLE,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,34,450,206
+END
+
+
+
+LANGUAGE 4, 2
+1                  RT_MANIFEST    ".\\manifest.xml"
