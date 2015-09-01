@@ -3,7 +3,8 @@ use std::env;
 use std::path::Path;
 
 fn main() {
-    link_res("./src/res/ui.rc");
+    //link_res("./src/res/ui.rc");
+    link_res("./src/res2/mhc.rc");
 }
 
 fn link_res(rc_path:&str){

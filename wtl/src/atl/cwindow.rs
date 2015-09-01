@@ -1,201 +1,190 @@
 
+
 use winapi::*;
 use user32;
 use shell32;
-//dialog or window impl this trait can proc messages
-
-// pub trait Wnd {
-// 	pub fn ProcessWindowMessage(&self,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD)->BOOL;
-// }
 
 pub const NULL_HWND: HWND = 0 as HWND;
-//any type that wants to operate on hwnd must impl this,include buttons,statics,cwindow,dialogs,frames etc
-//it is used to be part of windowtrait,now use as a seprate part in order to impl easily by user
-pub trait HwndTrait {
-	fn GetHwnd(&self) -> HWND;
-	fn Detach(&mut self)-> HWND; //only set m_hWnd = 0,this prevent most write ability from a hwndTrait
-	fn Attach (&mut self,hWndNew:HWND);
-}
 
-//types that only have a m_hWnd field,all method operate base on the m_hWnd
-//CWindow,CButton,CStatic...can impl this trait,Dialog,Frames should NOT impl this
 pub trait WindowHandler {
 	fn FromHwnd(h:HWND)->Self; 
 }
 
-#[macro_export]
-macro_rules! impl_hwnd_trait {
-	($tp:ident) => {
-		impl HwndTrait for $tp {
-			fn GetHwnd(&self) -> HWND{
-				self.m_hWnd
-			}
+// #[macro_export]
+// macro_rules! impl_window_trait {
+// 	($tp:ident) => {
+// 		impl WindowTrait for $tp {
+// 			pub fn GetHwnd(&self) -> HWND{
+// 				self.m_hWnd
+// 			}
 
-			fn Detach (&mut self) -> HWND {
-				let hWnd = self.m_hWnd;
-				self.m_hWnd = NULL_HWND;
-				hWnd
-			}
+// 			pub fn Detach (&mut self) -> HWND {
+// 				let hWnd = self.m_hWnd;
+// 				self.m_hWnd = NULL_HWND;
+// 				hWnd
+// 			}
 
-			fn Attach (&mut self,hWndNew:HWND) {
-				assert!(self.m_hWnd == NULL_HWND);
-				assert!(hWndNew != NULL_HWND);
-				unsafe{
-					assert!(user32::IsWindow(hWndNew) == TRUE);
-				}
-				self.m_hWnd = hWndNew;
-			}
-		}
-	};
-}
+// 			pub fn Attach (&mut self,hWndNew:HWND) {
+// 				assert!(self.m_hWnd == NULL_HWND);
+// 				assert!(hWndNew != NULL_HWND);
+// 				unsafe{
+// 					assert!(user32::IsWindow(hWndNew) == TRUE);
+// 				}
+// 				self.m_hWnd = hWndNew;
+// 			}
+// 		}
+// 	};
+// }
 
-#[macro_export]
-macro_rules! impl_hwnd_handler {
-	($tp:ident) => {
-		impl WindowHandler for $tp {
-			fn FromHwnd(h:HWND)->$tp{
-				$tp{
-					m_hWnd:h
-				}
-			}
-		}
-	};
-}
+// #[macro_export]
+// macro_rules! impl_hwnd_handler {
+// 	($tp:ident) => {
+// 		impl WindowHandler for $tp {
+// 			pub fn FromHwnd(h:HWND)->$tp{
+// 				$tp{
+// 					m_hWnd:h
+// 				}
+// 			}
+// 		}
+// 	};
+// }
 
-pub struct Dialog {
-    m_hWnd: HWND
-}
-impl_hwnd_trait!(Dialog);
 
-pub struct CWindow {
-    m_hWnd: HWND,
-}
-
-impl CWindow {
-	fn new(h:HWND) -> CWindow {
-		CWindow{
-			m_hWnd:h,
-		}
-	}
-}
-
-impl_hwnd_trait!(CWindow);
-impl_hwnd_handler!(CWindow);
-
-//place hold
 fn GetModuleInstance() -> HINSTANCE {
 	0 as HINSTANCE
 }
 
-//any type that impled HwndTrait will auto impl  WindowTrait
-impl <T> WindowTrait for T where T:HwndTrait{}
+pub struct CWindow(HWND);
 
-//winuser.h
-//#define RDW_ERASE               0x0004
-//#define RDW_UPDATENOW           0x0100
-//#define RDW_INVALIDATE          0x0001
-// const RDW_ERASE     : UINT = 0x0004;
-// const RDW_UPDATENOW : UINT = 0x0100;
-// const RDW_INVALIDATE: UINT = 0x0001;
+
+impl CWindow {
+	pub fn new(h:HWND) -> CWindow {
+		CWindow(h)
+	}
+}
+
+// impl_hwnd_trait!(CWindow);
+// impl_hwnd_handler!(CWindow);
+
+
+///////////////////////////////////////
+
 
 //this is different from CWinTrait,and it was introdced since wtl-rs
-//#[cfg(target_arch = "x86_64")]
-pub trait WindowTrait : HwndTrait {
-	
+impl CWindow {
+	pub fn GetHwnd(&self) -> HWND{
+		self.0
+	}
+
+	pub fn Detach(&mut self)-> HWND{ //only set m_hWnd = 0,this prevent most write ability from a hwndTrait
+		let hWnd = self.0;
+		self.0 = NULL_HWND;
+		hWnd
+	}
+
+	pub fn Attach (&mut self,hWndNew:HWND){
+		assert!(self.0 == NULL_HWND);
+		assert!(hWndNew != NULL_HWND);
+		unsafe{
+			assert!(user32::IsWindow(hWndNew) == TRUE);
+		}
+		self.0 = hWndNew;
+	}
+
 	#[inline]
-	fn assert_window(&self) {
+	pub fn assert_window(&self) {
 		assert!(self.IsWindow());
 	}
 
 	//all get functions
 	//output type depends on the inference of compiler
-	fn GetParent<T:WindowHandler> (&self) -> T {
+	pub fn GetParent<T:WindowHandler> (&self) -> T {
 		self.assert_window();
-		T::FromHwnd(unsafe{user32::GetParent(self.GetHwnd())})
+		T::FromHwnd(unsafe{user32::GetParent(self.0)})
 	}
 
-	fn SetParent<T:WindowHandler> (&self,hWndNewParent:HWND) -> T {
+	pub fn SetParent<T:WindowHandler> (&self,hWndNewParent:HWND) -> T {
 		self.assert_window();
-		T::FromHwnd(unsafe{user32::SetParent(self.GetHwnd(), hWndNewParent)})
+		T::FromHwnd(unsafe{user32::SetParent(self.0, hWndNewParent)})
 	}
 
-	fn GetDlgItem<T:WindowHandler> (&self,nID:c_int) -> T {
+	pub fn GetDlgItem<T:WindowHandler> (&self,nID:c_int) -> T {
 		self.assert_window();
-		T::FromHwnd(unsafe{user32::GetDlgItem(self.GetHwnd(), nID)})
+		T::FromHwnd(unsafe{user32::GetDlgItem(self.0, nID)})
 	}
 
 	//add rewritted functions of above that use cwindow as output,sometimes very convenient
-	fn GetParent2 (&self) -> CWindow {
+	pub fn GetParent2 (&self) -> CWindow {
 		self.assert_window();
-		CWindow::new(unsafe{user32::GetParent(self.GetHwnd())})
+		CWindow::new(unsafe{user32::GetParent(self.0)})
 	}
 
-	fn SetParent2 (&self,hWndNewParent:HWND) -> CWindow {
+	pub fn SetParent2 (&self,hWndNewParent:HWND) -> CWindow {
 		self.assert_window();
-		CWindow::new(unsafe{user32::SetParent(self.GetHwnd(), hWndNewParent)})
+		CWindow::new(unsafe{user32::SetParent(self.0, hWndNewParent)})
 	}
 
-	fn GetDlgItem2 (&self,nID:c_int) -> CWindow {
+	pub fn GetDlgItem2 (&self,nID:c_int) -> CWindow {
 		self.assert_window();
-		CWindow::new(unsafe{user32::GetDlgItem(self.GetHwnd(), nID)})
+		CWindow::new(unsafe{user32::GetDlgItem(self.0, nID)})
 	}
 
 	//return cwindow 
-	fn GetTopWindow (&self) -> CWindow {
+	pub fn GetTopWindow (&self) -> CWindow {
 		self.assert_window();
 		unsafe{
-			CWindow::new(user32::GetTopWindow(self.GetHwnd()))
+			CWindow::new(user32::GetTopWindow(self.0))
 		}
 	}
 
-	fn GetWindow (&self,nCmd:UINT) -> CWindow {
+	pub fn GetWindow (&self,nCmd:UINT) -> CWindow {
 		self.assert_window();
 		unsafe{
-			CWindow::new(user32::GetWindow(self.GetHwnd(), nCmd))
+			CWindow::new(user32::GetWindow(self.0, nCmd))
 		}
 	}
 
-	fn GetLastActivePopup (&self) -> CWindow {
+	pub fn GetLastActivePopup (&self) -> CWindow {
 		self.assert_window();
 		unsafe{
-			CWindow::new(user32::GetLastActivePopup(self.GetHwnd()))
+			CWindow::new(user32::GetLastActivePopup(self.0))
 		}
 	}
 
 	//https://msdn.microsoft.com/en-us/library/windows/desktop/ms632676(v=vs.85).aspx
 	//we don't know what will get,so the return must be cwindow
-	fn ChildWindowFromPoint (&self,point:POINT) -> CWindow {
+	pub fn ChildWindowFromPoint (&self,point:POINT) -> CWindow {
 		self.assert_window();
 		unsafe{
-			CWindow::new(user32::ChildWindowFromPoint(self.GetHwnd(), point))
+			CWindow::new(user32::ChildWindowFromPoint(self.0, point))
 		}
 	}
 
-	fn ChildWindowFromPointEx (&self,point:POINT,uFlags:UINT) -> CWindow {
+	pub fn ChildWindowFromPointEx (&self,point:POINT,uFlags:UINT) -> CWindow {
 		self.assert_window();
 		unsafe{
-			CWindow::new(user32::ChildWindowFromPointEx(self.GetHwnd(), point, uFlags))
+			CWindow::new(user32::ChildWindowFromPointEx(self.0, point, uFlags))
 		}
 	}
 
-	fn GetNextDlgGroupItem (&self,hWndCtl:HWND,bPrevious:BOOL) -> CWindow {
+	pub fn GetNextDlgGroupItem (&self,hWndCtl:HWND,bPrevious:BOOL) -> CWindow {
 		self.assert_window();
 		unsafe{
-			CWindow::new(user32::GetNextDlgGroupItem(self.GetHwnd(), hWndCtl, bPrevious))
+			CWindow::new(user32::GetNextDlgGroupItem(self.0, hWndCtl, bPrevious))
 		}
 	}
 
-	fn GetNextDlgTabItem (&self,hWndCtl:HWND,bPrevious:BOOL) -> CWindow {
+	pub fn GetNextDlgTabItem (&self,hWndCtl:HWND,bPrevious:BOOL) -> CWindow {
 		self.assert_window();
 		unsafe{
-			CWindow::new(user32::GetNextDlgTabItem(self.GetHwnd(), hWndCtl, bPrevious))
+			CWindow::new(user32::GetNextDlgTabItem(self.0, hWndCtl, bPrevious))
 		}
 	}
 
-	fn GetTopLevelParent (&self) -> CWindow {
+	pub fn GetTopLevelParent (&self) -> CWindow {
 		self.assert_window();
 
-		let mut hWndParent:HWND  = self.GetHwnd();
+		let mut hWndParent:HWND  = self.0;
 		unsafe{
 			let mut hWndTmp:HWND ;
 			loop{
@@ -209,11 +198,11 @@ pub trait WindowTrait : HwndTrait {
 		}
 	}
 
-	fn GetTopLevelWindow (&self) -> CWindow {
+	pub fn GetTopLevelWindow (&self) -> CWindow {
 		self.assert_window();
 
 		let mut hWndParent:HWND ;
-		let mut hWndTmp:HWND  = self.GetHwnd();
+		let mut hWndTmp:HWND  = self.0;
 
 		unsafe{
 			loop{
@@ -234,11 +223,11 @@ pub trait WindowTrait : HwndTrait {
 	}
 
 
-	fn GetDescendantWindow (&self,nID:c_int) -> CWindow {
+	pub fn GetDescendantWindow (&self,nID:c_int) -> CWindow {
 		self.assert_window();
 		let mut hWndTmp :HWND;
 		unsafe{
-			let mut hWndChild = user32::GetDlgItem(self.GetHwnd(), nID);
+			let mut hWndChild = user32::GetDlgItem(self.0, nID);
 			if hWndChild != NULL_HWND {
 				if user32::GetTopWindow(hWndChild) != NULL_HWND	{
 					let wnd = CWindow::new(hWndChild);
@@ -251,7 +240,7 @@ pub trait WindowTrait : HwndTrait {
 			}
 
 			loop {
-				hWndChild = user32::GetTopWindow(self.GetHwnd());
+				hWndChild = user32::GetTopWindow(self.0);
 				if hWndChild == NULL_HWND {
 					break;
 				}
@@ -278,7 +267,7 @@ pub trait WindowTrait : HwndTrait {
 	//but rust must init first,so this function must be static
 	//let b:CButton = CButton::Create(...);
 	//a wrapper is needed, e.g CButton::New(),new will call create
-	fn Create(
+	pub fn Create(
 		 lpstrWndClass:LPCWSTR ,
 		 hWndParent:HWND ,
 		 //_U_RECT rect = NULL,
@@ -290,8 +279,8 @@ pub trait WindowTrait : HwndTrait {
 		 hMenu:HMENU,
 		 lpCreateParam:LPVOID) -> HWND
 	{
-		//ATLASSUME(self.GetHwnd() == NULL);
-		//assert!(self.GetHwnd() == (0 as HWND));
+		//ATLASSUME(self.0 == NULL);
+		//assert!(self.0 == (0 as HWND));
 		//if(rect.m_lpRect == NULL)
 		//	rect.m_lpRect = &rcDefault;
 		unsafe{
@@ -304,13 +293,13 @@ pub trait WindowTrait : HwndTrait {
 	}
 
 	// //create dialog controls 
-	// fn Create2(lpstrWndClass:LPCTSTR,hWndParent:HWND,rect:&RECT) -> HWND {
+	// pub fn Create2(lpstrWndClass:LPCTSTR,hWndParent:HWND,rect:&RECT) -> HWND {
 
 	// }
 
-	fn DestroyWindow (&mut self) -> bool {
+	pub fn DestroyWindow (&mut self) -> bool {
 		self.assert_window();
-		if unsafe{user32::DestroyWindow(self.GetHwnd())} == FALSE{
+		if unsafe{user32::DestroyWindow(self.0)} == FALSE{
 			false
 		}else{
 			//self.set_hwnd(0 as HWND);
@@ -319,76 +308,76 @@ pub trait WindowTrait : HwndTrait {
 		}
 	}
 
-	fn GetStyle (&self) -> DWORD {
+	pub fn GetStyle (&self) -> DWORD {
 		self.assert_window();
-		unsafe{user32::GetWindowLongW(self.GetHwnd(), GWL_STYLE) as DWORD}
+		unsafe{user32::GetWindowLongW(self.0, GWL_STYLE) as DWORD}
 	}
 
-	fn GetExStyle (&self) -> DWORD {
+	pub fn GetExStyle (&self) -> DWORD {
 		self.assert_window();
-		unsafe{user32::GetWindowLongW(self.GetHwnd(), GWL_EXSTYLE) as DWORD}
+		unsafe{user32::GetWindowLongW(self.0, GWL_EXSTYLE) as DWORD}
 	}
 
-	fn GetWindowLong (&self,nIndex:c_int) -> LONG {
+	pub fn GetWindowLong (&self,nIndex:c_int) -> LONG {
 		self.assert_window();
-		unsafe{user32::GetWindowLongW(self.GetHwnd(), nIndex)}
+		unsafe{user32::GetWindowLongW(self.0, nIndex)}
 	}
 
-	fn GetWindowLongPtr (&self,nIndex:c_int) -> LONG_PTR {
+	pub fn GetWindowLongPtr (&self,nIndex:c_int) -> LONG_PTR {
 		self.assert_window();
-		unsafe{user32::GetWindowLongPtrW(self.GetHwnd(), nIndex)}
+		unsafe{user32::GetWindowLongPtrW(self.0, nIndex)}
 	}
 
-	fn SetWindowLong (&self,nIndex:c_int,dwNewLong:LONG) -> LONG {
+	pub fn SetWindowLong (&self,nIndex:c_int,dwNewLong:LONG) -> LONG {
 		self.assert_window();
-		unsafe{user32::SetWindowLongW(self.GetHwnd(), nIndex, dwNewLong)}
+		unsafe{user32::SetWindowLongW(self.0, nIndex, dwNewLong)}
 	}
 
-	fn SetWindowLongPtr (&self,nIndex:c_int,dwNewLong:LONG_PTR) -> LONG_PTR {
+	pub fn SetWindowLongPtr (&self,nIndex:c_int,dwNewLong:LONG_PTR) -> LONG_PTR {
 		self.assert_window();
-		unsafe{user32::SetWindowLongPtrW(self.GetHwnd(), nIndex, dwNewLong)}
+		unsafe{user32::SetWindowLongPtrW(self.0, nIndex, dwNewLong)}
 	}
 
-	fn GetWindowWord (&self,nIndex:c_int) -> WORD {
+	pub fn GetWindowWord (&self,nIndex:c_int) -> WORD {
 		self.assert_window();
-		unsafe{user32::GetWindowWord(self.GetHwnd(), nIndex)}
+		unsafe{user32::GetWindowWord(self.0, nIndex)}
 	}
 
-	fn SetWindowWord (&self,nIndex:c_int,wNewWord:WORD) -> WORD {
+	pub fn SetWindowWord (&self,nIndex:c_int,wNewWord:WORD) -> WORD {
 		self.assert_window();
-		unsafe{user32::SetWindowWord(self.GetHwnd(), nIndex, wNewWord)}
+		unsafe{user32::SetWindowWord(self.0, nIndex, wNewWord)}
 	}
 
-	fn SendMessage (&self,message:UINT,wParam:WPARAM,lParam:LPARAM) -> LRESULT {
+	pub fn SendMessage (&self,message:UINT,wParam:WPARAM,lParam:LPARAM) -> LRESULT {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(),message,wParam,lParam)}
+		unsafe{user32::SendMessageW(self.0,message,wParam,lParam)}
 	}
 
-	fn PostMessage (&self,message:UINT,wParam:WPARAM,lParam:LPARAM) -> bool {
+	pub fn PostMessage (&self,message:UINT,wParam:WPARAM,lParam:LPARAM) -> bool {
 		self.assert_window();
-		unsafe{user32::PostMessageW(self.GetHwnd(),message,wParam,lParam) == TRUE}
+		unsafe{user32::PostMessageW(self.0,message,wParam,lParam) == TRUE}
 	}
 
-	fn SendNotifyMessage (&self,message:UINT,wParam:WPARAM,lParam:LPARAM) -> bool {
+	pub fn SendNotifyMessage (&self,message:UINT,wParam:WPARAM,lParam:LPARAM) -> bool {
 		self.assert_window();
-		unsafe{user32::SendNotifyMessageW(self.GetHwnd(), message, wParam, lParam) == TRUE}
+		unsafe{user32::SendNotifyMessageW(self.0, message, wParam, lParam) == TRUE}
 	}
 
 	//static function
-	// fn SendMessage (hWnd:HWND,message:UINT,wParam:WPARAM,lParam:LPARAM) -> LRESULT {
+	// pub fn SendMessage (hWnd:HWND,message:UINT,wParam:WPARAM,lParam:LPARAM) -> LRESULT {
 	// 	//ATLASSERT(::IsWindow(hWnd));
 	// 	assert!(user32::IsWindow(hWnd) == TRUE);
 	// 	user32::SendMessage(hWnd, message, wParam, lParam)
 	// }
 
-	// fn SetWindowText (&self,lpszString:LPCTSTR) -> bool {
+	// pub fn SetWindowText (&self,lpszString:LPCTSTR) -> bool {
 	// 	self.assert_window();
-	// 	user32::SetWindowText(self.GetHwnd(), lpszString)  == TRUE
+	// 	user32::SetWindowText(self.0, lpszString)  == TRUE
 	// }
 
-	// fn GetWindowText (&self,lpszStringBuf:LPTSTR,nMaxCount:c_int) -> c_int {
+	// pub fn GetWindowText (&self,lpszStringBuf:LPTSTR,nMaxCount:c_int) -> c_int {
 	// 	self.assert_window();
-	// 	user32::GetWindowText(self.GetHwnd(), lpszStringBuf, nMaxCount)
+	// 	user32::GetWindowText(self.0, lpszStringBuf, nMaxCount)
 	// }
 
 
@@ -405,9 +394,9 @@ pub trait WindowTrait : HwndTrait {
 	// 	return nLength;
 	// }
 
-	fn GetWindowTextLength (&self) -> c_int {
+	pub fn GetWindowTextLength (&self) -> c_int {
 		self.assert_window();
-		unsafe{user32::GetWindowTextLengthW(self.GetHwnd())}
+		unsafe{user32::GetWindowTextLengthW(self.0)}
 	}
 
 	
@@ -422,356 +411,356 @@ pub trait WindowTrait : HwndTrait {
 	
 
 
-	fn SetFont (&self,hFont:HFONT,bRedraw:BOOL)  {
+	pub fn SetFont (&self,hFont:HFONT,bRedraw:BOOL)  {
 		self.assert_window();
-		//user32::SendMessage(self.GetHwnd(), WM_SETFONT, hFont as WPARAM, MAKELPARAM(bRedraw, 0));
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_SETFONT, hFont as WPARAM, (bRedraw & 0xFFFF) as LPARAM);}
+		//user32::SendMessage(self.0, WM_SETFONT, hFont as WPARAM, MAKELPARAM(bRedraw, 0));
+		unsafe{user32::SendMessageW(self.0, WM_SETFONT, hFont as WPARAM, (bRedraw & 0xFFFF) as LPARAM);}
 	}
 
-	fn GetFont (&self) -> HFONT {
+	pub fn GetFont (&self) -> HFONT {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_GETFONT, 0, 0)  as HFONT}
+		unsafe{user32::SendMessageW(self.0, WM_GETFONT, 0, 0)  as HFONT}
 	}
 
 
 
-	fn GetMenu (&self) -> HMENU {
+	pub fn GetMenu (&self) -> HMENU {
 		self.assert_window();
-		unsafe{user32::GetMenu(self.GetHwnd()) as HMENU}
+		unsafe{user32::GetMenu(self.0) as HMENU}
 	}
 
-	fn SetMenu (&self,hMenu:HMENU) -> bool {
+	pub fn SetMenu (&self,hMenu:HMENU) -> bool {
 		self.assert_window();
-		unsafe{user32::SetMenu(self.GetHwnd(), hMenu) == TRUE}
+		unsafe{user32::SetMenu(self.0, hMenu) == TRUE}
 	}
 
-	fn DrawMenuBar (&self) -> bool {
+	pub fn DrawMenuBar (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::DrawMenuBar(self.GetHwnd()) == TRUE}
+		unsafe{user32::DrawMenuBar(self.0) == TRUE}
 	}
 
-	fn GetSystemMenu (&self,bRevert:BOOL) -> HMENU {
+	pub fn GetSystemMenu (&self,bRevert:BOOL) -> HMENU {
 		self.assert_window();
 		unsafe{
-			user32::GetSystemMenu(self.GetHwnd(), bRevert) as HMENU
+			user32::GetSystemMenu(self.0, bRevert) as HMENU
 		}
 	}
 
-	fn HiliteMenuItem (&self,hMenu:HMENU,uItemHilite:UINT,uHilite:UINT) -> bool {
+	pub fn HiliteMenuItem (&self,hMenu:HMENU,uItemHilite:UINT,uHilite:UINT) -> bool {
 		self.assert_window();
 		unsafe{
-			user32::HiliteMenuItem(self.GetHwnd(), hMenu, uItemHilite, uHilite) == TRUE
+			user32::HiliteMenuItem(self.0, hMenu, uItemHilite, uHilite) == TRUE
 		}
 	}
 
-	fn IsIconic (&self) -> bool {
+	pub fn IsIconic (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::IsIconic(self.GetHwnd()) == TRUE}
+		unsafe{user32::IsIconic(self.0) == TRUE}
 	}
 
-	fn IsZoomed (&self) -> bool {
+	pub fn IsZoomed (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::IsZoomed(self.GetHwnd()) == TRUE}
+		unsafe{user32::IsZoomed(self.0) == TRUE}
 	}
 
-	fn MoveWindow(&self,x:c_int,y:c_int,nWidth:c_int,nHeight:c_int,bRepaint:BOOL) -> bool{
+	pub fn MoveWindow(&self,x:c_int,y:c_int,nWidth:c_int,nHeight:c_int,bRepaint:BOOL) -> bool{
 		self.assert_window();
-		unsafe{user32::MoveWindow(self.GetHwnd(), x, y, nWidth, nHeight, bRepaint) == TRUE}
+		unsafe{user32::MoveWindow(self.0, x, y, nWidth, nHeight, bRepaint) == TRUE}
 	}
 
-	//fn MoveWindow2 (&self,lpRect:LPCRECT,bRepaint:BOOL) -> bool {
-	fn MoveWindow2 (&self,lpRect:&RECT,bRepaint:BOOL) -> bool {
+	//pub fn MoveWindow2 (&self,lpRect:LPCRECT,bRepaint:BOOL) -> bool {
+	pub fn MoveWindow2 (&self,lpRect:&RECT,bRepaint:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::MoveWindow(self.GetHwnd(), lpRect.left, lpRect.top, lpRect.right - lpRect.left, lpRect.bottom - lpRect.top, bRepaint) == TRUE}
+		unsafe{user32::MoveWindow(self.0, lpRect.left, lpRect.top, lpRect.right - lpRect.left, lpRect.bottom - lpRect.top, bRepaint) == TRUE}
 	}
 
-	fn SetWindowPos(&self,hWndInsertAfter:HWND,x:c_int,y:c_int,cx:c_int,cy:c_int,nFlags:UINT) -> bool {
+	pub fn SetWindowPos(&self,hWndInsertAfter:HWND,x:c_int,y:c_int,cx:c_int,cy:c_int,nFlags:UINT) -> bool {
 		self.assert_window();
-		unsafe{user32::SetWindowPos(self.GetHwnd(), hWndInsertAfter, x, y, cx, cy, nFlags) == TRUE}
+		unsafe{user32::SetWindowPos(self.0, hWndInsertAfter, x, y, cx, cy, nFlags) == TRUE}
 	}
 
-	fn SetWindowPos2 (&self,hWndInsertAfter:HWND,lpRect:&RECT,nFlags:UINT) -> bool {
+	pub fn SetWindowPos2 (&self,hWndInsertAfter:HWND,lpRect:&RECT,nFlags:UINT) -> bool {
 		self.assert_window();
-		unsafe{user32::SetWindowPos(self.GetHwnd(), hWndInsertAfter, lpRect.left, lpRect.top, lpRect.right - lpRect.left, lpRect.bottom - lpRect.top, nFlags) == TRUE}
+		unsafe{user32::SetWindowPos(self.0, hWndInsertAfter, lpRect.left, lpRect.top, lpRect.right - lpRect.left, lpRect.bottom - lpRect.top, nFlags) == TRUE}
 	}
 
-	fn ArrangeIconicWindows (&self) -> UINT {
+	pub fn ArrangeIconicWindows (&self) -> UINT {
 		self.assert_window();
-		unsafe{user32::ArrangeIconicWindows(self.GetHwnd())}
+		unsafe{user32::ArrangeIconicWindows(self.0)}
 	}
 
-	fn BringWindowToTop (&self) -> bool {
+	pub fn BringWindowToTop (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::BringWindowToTop(self.GetHwnd()) == TRUE}
+		unsafe{user32::BringWindowToTop(self.0) == TRUE}
 	}
 
-	fn GetWindowRect (&self,lpRect:LPRECT) -> bool {
+	pub fn GetWindowRect (&self,lpRect:LPRECT) -> bool {
 		self.assert_window();
-		unsafe{user32::GetWindowRect(self.GetHwnd(), lpRect) == TRUE}
+		unsafe{user32::GetWindowRect(self.0, lpRect) == TRUE}
 	}
 
-	fn GetClientRect (&self,lpRect:&mut RECT) -> bool {
+	pub fn GetClientRect (&self,lpRect:&mut RECT) -> bool {
 		self.assert_window();
 		let p = lpRect as LPRECT;
-		unsafe{user32::GetClientRect(self.GetHwnd(), p) == TRUE}
+		unsafe{user32::GetClientRect(self.0, p) == TRUE}
 	}
 
-	fn GetWindowPlacement(&self,lpwndpl:&mut WINDOWPLACEMENT) -> bool {
+	pub fn GetWindowPlacement(&self,lpwndpl:&mut WINDOWPLACEMENT) -> bool {
 		self.assert_window();
-		unsafe{user32::GetWindowPlacement(self.GetHwnd(), lpwndpl) == TRUE}
+		unsafe{user32::GetWindowPlacement(self.0, lpwndpl) == TRUE}
 	}
 
-	fn SetWindowPlacement(&self,lpwndpl:&WINDOWPLACEMENT) -> bool {
+	pub fn SetWindowPlacement(&self,lpwndpl:&WINDOWPLACEMENT) -> bool {
 		self.assert_window();
-		unsafe{user32::SetWindowPlacement(self.GetHwnd(), lpwndpl) == TRUE}
+		unsafe{user32::SetWindowPlacement(self.0, lpwndpl) == TRUE}
 	}
 
-	fn ClientToScreen (&self,lpPoint:LPPOINT) -> bool {
+	pub fn ClientToScreen (&self,lpPoint:LPPOINT) -> bool {
 		self.assert_window();
-		unsafe{user32::ClientToScreen(self.GetHwnd(), lpPoint) == TRUE}
+		unsafe{user32::ClientToScreen(self.0, lpPoint) == TRUE}
 	}
 
-	fn ClientToScreen2 (&self,lpRect:&mut RECT) -> bool {
-		self.assert_window();
-		let p1 = lpRect as LPRECT;
-		let p2 = p1 as LPPOINT;
-		if unsafe{user32::ClientToScreen(self.GetHwnd(), p2)} == FALSE{
-			return false;
-		}
-		unsafe{user32::ClientToScreen(self.GetHwnd(), p2.offset(1)) == TRUE}
-	}
-
-	fn ScreenToClient (&self,lpPoint:LPPOINT) -> bool {
-		self.assert_window();
-		unsafe{user32::ScreenToClient(self.GetHwnd(), lpPoint) == TRUE}
-	}
-
-	fn ScreenToClient2 (&self,lpRect:&mut RECT) -> bool {
+	pub fn ClientToScreen2 (&self,lpRect:&mut RECT) -> bool {
 		self.assert_window();
 		let p1 = lpRect as LPRECT;
 		let p2 = p1 as LPPOINT;
-
-		if unsafe{user32::ScreenToClient(self.GetHwnd(), p2)} == FALSE{
+		if unsafe{user32::ClientToScreen(self.0, p2)} == FALSE{
 			return false;
 		}
-		//user32::ScreenToClient(self.GetHwnd(), ((LPPOINT)lpRect)+1) == TRUE
-		unsafe{user32::ScreenToClient(self.GetHwnd(), p2.offset(1)) == TRUE}
+		unsafe{user32::ClientToScreen(self.0, p2.offset(1)) == TRUE}
 	}
 
-	fn MapWindowPoints (&self,hWndTo:HWND,lpPoint:LPPOINT,nCount:UINT) -> c_int {
+	pub fn ScreenToClient (&self,lpPoint:LPPOINT) -> bool {
 		self.assert_window();
-		unsafe{user32::MapWindowPoints(self.GetHwnd(), hWndTo, lpPoint, nCount)}
+		unsafe{user32::ScreenToClient(self.0, lpPoint) == TRUE}
 	}
 
-	fn MapWindowPoints2 (&self,hWndTo:HWND,lpRect:LPRECT) -> c_int {
+	pub fn ScreenToClient2 (&self,lpRect:&mut RECT) -> bool {
 		self.assert_window();
-		//user32::MapWindowPoints(self.GetHwnd(), hWndTo, (LPPOINT)lpRect, 2)
-		unsafe{user32::MapWindowPoints(self.GetHwnd(), hWndTo, lpRect as LPPOINT, 2)}
+		let p1 = lpRect as LPRECT;
+		let p2 = p1 as LPPOINT;
+
+		if unsafe{user32::ScreenToClient(self.0, p2)} == FALSE{
+			return false;
+		}
+		//user32::ScreenToClient(self.0, ((LPPOINT)lpRect)+1) == TRUE
+		unsafe{user32::ScreenToClient(self.0, p2.offset(1)) == TRUE}
 	}
 
-	fn BeginPaint (&self,lpPaint:LPPAINTSTRUCT) -> HDC {
+	pub fn MapWindowPoints (&self,hWndTo:HWND,lpPoint:LPPOINT,nCount:UINT) -> c_int {
 		self.assert_window();
-		unsafe{user32::BeginPaint(self.GetHwnd(), lpPaint)}
+		unsafe{user32::MapWindowPoints(self.0, hWndTo, lpPoint, nCount)}
 	}
 
-	fn EndPaint (&self,lpPaint:LPPAINTSTRUCT)  {
+	pub fn MapWindowPoints2 (&self,hWndTo:HWND,lpRect:LPRECT) -> c_int {
 		self.assert_window();
-		unsafe{user32::EndPaint(self.GetHwnd(), lpPaint);}
+		//user32::MapWindowPoints(self.0, hWndTo, (LPPOINT)lpRect, 2)
+		unsafe{user32::MapWindowPoints(self.0, hWndTo, lpRect as LPPOINT, 2)}
 	}
 
-	fn GetDC (&self) -> HDC {
+	pub fn BeginPaint (&self,lpPaint:LPPAINTSTRUCT) -> HDC {
 		self.assert_window();
-		unsafe{user32::GetDC(self.GetHwnd())}
+		unsafe{user32::BeginPaint(self.0, lpPaint)}
 	}
 
-	fn GetWindowDC (&self) -> HDC {
+	pub fn EndPaint (&self,lpPaint:LPPAINTSTRUCT)  {
 		self.assert_window();
-		unsafe{user32::GetWindowDC(self.GetHwnd())}
+		unsafe{user32::EndPaint(self.0, lpPaint);}
 	}
 
-	fn ReleaseDC (&self,hDC:HDC) -> c_int {
+	pub fn GetDC (&self) -> HDC {
 		self.assert_window();
-		unsafe{user32::ReleaseDC(self.GetHwnd(), hDC)}
+		unsafe{user32::GetDC(self.0)}
 	}
 
-	fn Print (&self,hDC:HDC,dwFlags:DWORD)  {
+	pub fn GetWindowDC (&self) -> HDC {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_PRINT, hDC as WPARAM, dwFlags as LPARAM);}
+		unsafe{user32::GetWindowDC(self.0)}
 	}
 
-	fn PrintClient (&self,hDC:HDC,dwFlags:DWORD)  {
+	pub fn ReleaseDC (&self,hDC:HDC) -> c_int {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_PRINTCLIENT, hDC as WPARAM, dwFlags as LPARAM);}
+		unsafe{user32::ReleaseDC(self.0, hDC)}
 	}
 
-	fn UpdateWindow (&self) -> bool {
+	pub fn Print (&self,hDC:HDC,dwFlags:DWORD)  {
 		self.assert_window();
-		unsafe{user32::UpdateWindow(self.GetHwnd()) == TRUE}
+		unsafe{user32::SendMessageW(self.0, WM_PRINT, hDC as WPARAM, dwFlags as LPARAM);}
 	}
 
-	fn SetRedraw (&self,bRedraw:BOOL)  {
+	pub fn PrintClient (&self,hDC:HDC,dwFlags:DWORD)  {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_SETREDRAW, bRedraw as WPARAM, 0 as LPARAM);}
+		unsafe{user32::SendMessageW(self.0, WM_PRINTCLIENT, hDC as WPARAM, dwFlags as LPARAM);}
 	}
 
-	fn GetUpdateRect (&self,lpRect:LPRECT,bErase:BOOL) -> bool {
+	pub fn UpdateWindow (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::GetUpdateRect(self.GetHwnd(), lpRect, bErase) == TRUE}
+		unsafe{user32::UpdateWindow(self.0) == TRUE}
 	}
 
-	fn GetUpdateRgn (&self,hRgn:HRGN,bErase:BOOL) -> c_int {
+	pub fn SetRedraw (&self,bRedraw:BOOL)  {
 		self.assert_window();
-		unsafe{user32::GetUpdateRgn(self.GetHwnd(), hRgn, bErase)}
+		unsafe{user32::SendMessageW(self.0, WM_SETREDRAW, bRedraw as WPARAM, 0 as LPARAM);}
 	}
 
-	fn Invalidate (&self,bErase:BOOL) -> bool {
+	pub fn GetUpdateRect (&self,lpRect:LPRECT,bErase:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::InvalidateRect(self.GetHwnd(), 0 as LPRECT, bErase) == TRUE}
+		unsafe{user32::GetUpdateRect(self.0, lpRect, bErase) == TRUE}
 	}
 
-	fn Invalidate2 (&self,lpRect:LPCRECT,bErase:BOOL) -> bool {
+	pub fn GetUpdateRgn (&self,hRgn:HRGN,bErase:BOOL) -> c_int {
 		self.assert_window();
-		unsafe{user32::InvalidateRect(self.GetHwnd(), lpRect, bErase) == TRUE}
+		unsafe{user32::GetUpdateRgn(self.0, hRgn, bErase)}
 	}
 
-	fn ValidateRect (&self,lpRect:LPCRECT) -> bool {
+	pub fn Invalidate (&self,bErase:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::ValidateRect(self.GetHwnd(), lpRect) == TRUE}
+		unsafe{user32::InvalidateRect(self.0, 0 as LPRECT, bErase) == TRUE}
 	}
 
-	fn InvalidateRgn (&self,hRgn:HRGN,bErase:BOOL)  {
+	pub fn Invalidate2 (&self,lpRect:LPCRECT,bErase:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::InvalidateRgn(self.GetHwnd(), hRgn, bErase);}
+		unsafe{user32::InvalidateRect(self.0, lpRect, bErase) == TRUE}
 	}
 
-	fn ValidateRgn (&self,hRgn:HRGN) -> bool {
+	pub fn ValidateRect (&self,lpRect:LPCRECT) -> bool {
 		self.assert_window();
-		unsafe{user32::ValidateRgn(self.GetHwnd(), hRgn) == TRUE}
+		unsafe{user32::ValidateRect(self.0, lpRect) == TRUE}
 	}
 
-	fn ShowWindow (&self,nCmdShow:c_int) -> bool {
+	pub fn InvalidateRgn (&self,hRgn:HRGN,bErase:BOOL)  {
 		self.assert_window();
-		unsafe{user32::ShowWindow(self.GetHwnd(), nCmdShow) == TRUE}
+		unsafe{user32::InvalidateRgn(self.0, hRgn, bErase);}
 	}
 
-	fn IsWindowVisible (&self) -> bool {
+	pub fn ValidateRgn (&self,hRgn:HRGN) -> bool {
 		self.assert_window();
-		unsafe{user32::IsWindowVisible(self.GetHwnd()) == TRUE}
+		unsafe{user32::ValidateRgn(self.0, hRgn) == TRUE}
 	}
 
-	fn ShowOwnedPopups (&self,bShow:BOOL) -> bool {
+	pub fn ShowWindow (&self,nCmdShow:c_int) -> bool {
 		self.assert_window();
-		unsafe{user32::ShowOwnedPopups(self.GetHwnd(), bShow) == TRUE}
+		unsafe{user32::ShowWindow(self.0, nCmdShow) == TRUE}
 	}
 
-	fn GetDCEx (&self,hRgnClip:HRGN,flags:DWORD) -> HDC {
+	pub fn IsWindowVisible (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::GetDCEx(self.GetHwnd(), hRgnClip, flags)}
+		unsafe{user32::IsWindowVisible(self.0) == TRUE}
 	}
 
-	fn LockWindowUpdate (&self,bLock:bool) -> bool {
+	pub fn ShowOwnedPopups (&self,bShow:BOOL) -> bool {
+		self.assert_window();
+		unsafe{user32::ShowOwnedPopups(self.0, bShow) == TRUE}
+	}
+
+	pub fn GetDCEx (&self,hRgnClip:HRGN,flags:DWORD) -> HDC {
+		self.assert_window();
+		unsafe{user32::GetDCEx(self.0, hRgnClip, flags)}
+	}
+
+	pub fn LockWindowUpdate (&self,bLock:bool) -> bool {
 		self.assert_window();
 		if bLock{
-			unsafe{user32::LockWindowUpdate(self.GetHwnd()) == TRUE}
+			unsafe{user32::LockWindowUpdate(self.0) == TRUE}
 		}else{
 			unsafe{user32::LockWindowUpdate(NULL_HWND) == TRUE}
 		}
 	}
 
-	fn RedrawWindow2(&self) -> bool{
+	pub fn RedrawWindow2(&self) -> bool{
 		self.RedrawWindow(0 as LPCRECT,0 as HRGN,RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE)
 	}
 
-	fn RedrawWindow(&self,lpRectUpdate:LPCRECT,hRgnUpdate:HRGN,flags:UINT)->bool{
+	pub fn RedrawWindow(&self,lpRectUpdate:LPCRECT,hRgnUpdate:HRGN,flags:UINT)->bool{
 		self.assert_window();
-		unsafe{user32::RedrawWindow(self.GetHwnd(), lpRectUpdate, hRgnUpdate, flags) == TRUE}
+		unsafe{user32::RedrawWindow(self.0, lpRectUpdate, hRgnUpdate, flags) == TRUE}
 	}
 
-	fn SetTimer(&self,nIDEvent:UINT_PTR,nElapse:UINT) -> UINT_PTR {
+	pub fn SetTimer(&self,nIDEvent:UINT_PTR,nElapse:UINT) -> UINT_PTR {
 		self.assert_window();
-		unsafe{user32::SetTimer(self.GetHwnd(), nIDEvent, nElapse, None)}
+		unsafe{user32::SetTimer(self.0, nIDEvent, nElapse, None)}
 	}
 
-	fn SetTimer2(&self,nIDEvent:UINT_PTR,nElapse:UINT,lpfnTimer:TimerProc)->UINT_PTR{
+	pub fn SetTimer2(&self,nIDEvent:UINT_PTR,nElapse:UINT,lpfnTimer:TimerProc)->UINT_PTR{
 		self.assert_window();
-		unsafe{user32::SetTimer(self.GetHwnd(), nIDEvent, nElapse, lpfnTimer)}
+		unsafe{user32::SetTimer(self.0, nIDEvent, nElapse, lpfnTimer)}
 	}
 
-	fn KillTimer (&self,nIDEvent:UINT_PTR) -> bool {
+	pub fn KillTimer (&self,nIDEvent:UINT_PTR) -> bool {
 		self.assert_window();
-		unsafe{user32::KillTimer(self.GetHwnd(), nIDEvent) == TRUE}
+		unsafe{user32::KillTimer(self.0, nIDEvent) == TRUE}
 	}
 
-	fn IsWindowEnabled (&self) -> bool {
+	pub fn IsWindowEnabled (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::IsWindowEnabled(self.GetHwnd()) == TRUE}
+		unsafe{user32::IsWindowEnabled(self.0) == TRUE}
 	}
 
-	fn EnableWindow (&self,bEnable:BOOL) -> bool {
+	pub fn EnableWindow (&self,bEnable:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::EnableWindow(self.GetHwnd(), bEnable) == TRUE}
+		unsafe{user32::EnableWindow(self.0, bEnable) == TRUE}
 	}
 
-	fn SetActiveWindow (&self) -> HWND {
+	pub fn SetActiveWindow (&self) -> HWND {
 		self.assert_window();
-		unsafe{user32::SetActiveWindow(self.GetHwnd())}
+		unsafe{user32::SetActiveWindow(self.0)}
 	}
 
-	fn SetCapture (&self) -> HWND {
+	pub fn SetCapture (&self) -> HWND {
 		self.assert_window();
-		unsafe{user32::SetCapture(self.GetHwnd())}
+		unsafe{user32::SetCapture(self.0)}
 	}
 
-	fn SetFocus (&self) -> HWND {
+	pub fn SetFocus (&self) -> HWND {
 		self.assert_window();
-		unsafe{user32::SetFocus(self.GetHwnd())}
+		unsafe{user32::SetFocus(self.0)}
 	}
 
 
 
-	fn CheckDlgButton (&self,nIDButton:c_int,nCheck:UINT) -> bool {
+	pub fn CheckDlgButton (&self,nIDButton:c_int,nCheck:UINT) -> bool {
 		self.assert_window();
-		unsafe{user32::CheckDlgButton(self.GetHwnd(), nIDButton, nCheck) == TRUE}
+		unsafe{user32::CheckDlgButton(self.0, nIDButton, nCheck) == TRUE}
 	}
 
-	fn CheckRadioButton (&self,nIDFirstButton:c_int,nIDLastButton:c_int,nIDCheckButton:c_int) -> bool {
+	pub fn CheckRadioButton (&self,nIDFirstButton:c_int,nIDLastButton:c_int,nIDCheckButton:c_int) -> bool {
 		self.assert_window();
-		unsafe{user32::CheckRadioButton(self.GetHwnd(), nIDFirstButton, nIDLastButton, nIDCheckButton) == TRUE}
+		unsafe{user32::CheckRadioButton(self.0, nIDFirstButton, nIDLastButton, nIDCheckButton) == TRUE}
 	}
 
-	// fn DlgDirList (&self,lpPathSpec:LPTSTR,nIDListBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
+	// pub fn DlgDirList (&self,lpPathSpec:LPTSTR,nIDListBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
 	// 	self.assert_window();
-	// 	user32::DlgDirList(self.GetHwnd(), lpPathSpec, nIDListBox, nIDStaticPath, nFileType)
+	// 	user32::DlgDirList(self.0, lpPathSpec, nIDListBox, nIDStaticPath, nFileType)
 	// }
 
-	// fn DlgDirListComboBox (&self,lpPathSpec:LPTSTR,nIDComboBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
+	// pub fn DlgDirListComboBox (&self,lpPathSpec:LPTSTR,nIDComboBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
 	// 	self.assert_window();
-	// 	user32::DlgDirListComboBox(self.GetHwnd(), lpPathSpec, nIDComboBox, nIDStaticPath, nFileType)
+	// 	user32::DlgDirListComboBox(self.0, lpPathSpec, nIDComboBox, nIDStaticPath, nFileType)
 	// }
 
-	// fn DlgDirSelect (lpString:LPTSTR,nCount:c_int,nIDListBox:c_int) -> bool {
+	// pub fn DlgDirSelect (lpString:LPTSTR,nCount:c_int,nIDListBox:c_int) -> bool {
 	// 	self.assert_window();
-	// 	user32::DlgDirSelectEx(self.GetHwnd(), lpString, nCount, nIDListBox) == TRUE
+	// 	user32::DlgDirSelectEx(self.0, lpString, nCount, nIDListBox) == TRUE
 	// }
 
-	// fn DlgDirSelectComboBox (lpString:LPTSTR,nCount:c_int,nIDComboBox:c_int) -> bool {
+	// pub fn DlgDirSelectComboBox (lpString:LPTSTR,nCount:c_int,nIDComboBox:c_int) -> bool {
 	// 	self.assert_window();
-	// 	user32::DlgDirSelectComboBoxEx(self.GetHwnd(), lpString, nCount, nIDComboBox) == TRUE
+	// 	user32::DlgDirSelectComboBoxEx(self.0, lpString, nCount, nIDComboBox) == TRUE
 	// }
 
-	fn GetDlgItemInt(&self,nID:c_int) -> UINT {
+	pub fn GetDlgItemInt(&self,nID:c_int) -> UINT {
 		self.assert_window();
-		unsafe{user32::GetDlgItemInt(self.GetHwnd(), nID, 0 as *mut BOOL, TRUE)}
+		unsafe{user32::GetDlgItemInt(self.0, nID, 0 as *mut BOOL, TRUE)}
 	}
 
-	fn GetDlgItemInt2(&self,nID:c_int,lpTrans:&mut BOOL,bSigned:BOOL) -> UINT {
+	pub fn GetDlgItemInt2(&self,nID:c_int,lpTrans:&mut BOOL,bSigned:BOOL) -> UINT {
 		self.assert_window();
-		unsafe{user32::GetDlgItemInt(self.GetHwnd(), nID, lpTrans as *mut BOOL, bSigned)}
+		unsafe{user32::GetDlgItemInt(self.0, nID, lpTrans as *mut BOOL, bSigned)}
 	}
 
-	// fn GetDlgItemText (&self,nID:c_int,lpStr:LPTSTR,nMaxCount:c_int) -> UINT {
+	// pub fn GetDlgItemText (&self,nID:c_int,lpStr:LPTSTR,nMaxCount:c_int) -> UINT {
 	// 	self.assert_window();
-	// 	user32::GetDlgItemText(self.GetHwnd(), nID, lpStr, nMaxCount)
+	// 	user32::GetDlgItemText(self.0, nID, lpStr, nMaxCount)
 	// }
 
 	// UINT GetDlgItemText(
@@ -816,27 +805,27 @@ pub trait WindowTrait : HwndTrait {
 	// }
 
 
-	fn IsDlgButtonChecked (&self,nIDButton:c_int) -> UINT {
+	pub fn IsDlgButtonChecked (&self,nIDButton:c_int) -> UINT {
 		self.assert_window();
-		unsafe{user32::IsDlgButtonChecked(self.GetHwnd(), nIDButton)}
+		unsafe{user32::IsDlgButtonChecked(self.0, nIDButton)}
 	}
 
-	fn SendDlgItemMessage (&self,nID:c_int,message:UINT,wParam:WPARAM,lParam:LPARAM) -> LRESULT {
+	pub fn SendDlgItemMessage (&self,nID:c_int,message:UINT,wParam:WPARAM,lParam:LPARAM) -> LRESULT {
 		self.assert_window();
-		unsafe{user32::SendDlgItemMessageW(self.GetHwnd(), nID, message, wParam, lParam)}
+		unsafe{user32::SendDlgItemMessageW(self.0, nID, message, wParam, lParam)}
 	}
 
-	fn SetDlgItemInt (&self,nID:c_int,nValue:UINT,bSigned:BOOL) -> bool {
+	pub fn SetDlgItemInt (&self,nID:c_int,nValue:UINT,bSigned:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::SetDlgItemInt(self.GetHwnd(), nID, nValue, bSigned) == TRUE}
+		unsafe{user32::SetDlgItemInt(self.0, nID, nValue, bSigned) == TRUE}
 	}
 
-	// fn SetDlgItemText (&self,nID:c_int,lpszString:LPCTSTR) -> bool {
+	// pub fn SetDlgItemText (&self,nID:c_int,lpszString:LPCTSTR) -> bool {
 	// 	self.assert_window();
-	// 	user32::SetDlgItemText(self.GetHwnd(), nID, lpszString) == TRUE
+	// 	user32::SetDlgItemText(self.0, nID, lpszString) == TRUE
 	// }
 
-// #ifndef _ATL_NO_HOSTING
+// #ipub fndef _ATL_NO_HOSTING
 // ATLPREFAST_SUPPRESS(6387)
 // 	HRESULT GetDlgControl(
 // 		 c_int nID,
@@ -890,22 +879,22 @@ pub trait WindowTrait : HwndTrait {
 
 
 
-	fn GetScrollPos (&self,nBar:c_int) -> c_int {
+	pub fn GetScrollPos (&self,nBar:c_int) -> c_int {
 		self.assert_window();
-		unsafe{user32::GetScrollPos(self.GetHwnd(), nBar)}
+		unsafe{user32::GetScrollPos(self.0, nBar)}
 	}
 
-	fn GetScrollRange (&self,nBar:c_int,lpMinPos:LPINT,lpMaxPos:LPINT) -> bool {
+	pub fn GetScrollRange (&self,nBar:c_int,lpMinPos:LPINT,lpMaxPos:LPINT) -> bool {
 		self.assert_window();
-		unsafe{user32::GetScrollRange(self.GetHwnd(), nBar, lpMinPos, lpMaxPos) == TRUE}
+		unsafe{user32::GetScrollRange(self.0, nBar, lpMinPos, lpMaxPos) == TRUE}
 	}
 
-	fn ScrollWindow (&self,xAmount:c_int,yAmount:c_int,lpRect:LPCRECT,lpClipRect:LPCRECT) -> bool {
+	pub fn ScrollWindow (&self,xAmount:c_int,yAmount:c_int,lpRect:LPCRECT,lpClipRect:LPCRECT) -> bool {
 		self.assert_window();
-		unsafe{user32::ScrollWindow(self.GetHwnd(), xAmount, yAmount, lpRect, lpClipRect) == TRUE}
+		unsafe{user32::ScrollWindow(self.0, xAmount, yAmount, lpRect, lpClipRect) == TRUE}
 	}
 
-	fn ScrollWindowEx(
+	pub fn ScrollWindowEx(
 		 &self,
 		 dx:c_int,
 		 dy:c_int,
@@ -916,169 +905,169 @@ pub trait WindowTrait : HwndTrait {
 		 uFlags:UINT ) -> c_int 
 	{
 		self.assert_window();
-		unsafe{user32::ScrollWindowEx(self.GetHwnd(), dx, dy, lpRectScroll, lpRectClip, hRgnUpdate, lpRectUpdate, uFlags)}
+		unsafe{user32::ScrollWindowEx(self.0, dx, dy, lpRectScroll, lpRectClip, hRgnUpdate, lpRectUpdate, uFlags)}
 	}
 
-	fn ScrollWindowExDefault(&self,dx:c_int,dy:c_int,uFlags:UINT)->c_int{
+	pub fn ScrollWindowExDefault(&self,dx:c_int,dy:c_int,uFlags:UINT)->c_int{
 		self.ScrollWindowEx(dx,dy,0 as LPCRECT,0 as LPCRECT,0 as HRGN,0 as LPRECT,uFlags)
 	}
 
-	fn SetScrollPos (&self,nBar:c_int,nPos:c_int,bRedraw:BOOL) -> c_int {
+	pub fn SetScrollPos (&self,nBar:c_int,nPos:c_int,bRedraw:BOOL) -> c_int {
 		self.assert_window();
-		unsafe{user32::SetScrollPos(self.GetHwnd(), nBar, nPos, bRedraw)}
+		unsafe{user32::SetScrollPos(self.0, nBar, nPos, bRedraw)}
 	}
 
-	fn SetScrollRange (&self,nBar:c_int,nMinPos:c_int,nMaxPos:c_int,bRedraw:BOOL) -> bool {
+	pub fn SetScrollRange (&self,nBar:c_int,nMinPos:c_int,nMaxPos:c_int,bRedraw:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::SetScrollRange(self.GetHwnd(), nBar, nMinPos, nMaxPos, bRedraw) == TRUE}
+		unsafe{user32::SetScrollRange(self.0, nBar, nMinPos, nMaxPos, bRedraw) == TRUE}
 	}
 
-	fn ShowScrollBar (&self,nBar:c_int,bShow:BOOL) -> bool {
+	pub fn ShowScrollBar (&self,nBar:c_int,bShow:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::ShowScrollBar(self.GetHwnd(), nBar, bShow) == TRUE}
+		unsafe{user32::ShowScrollBar(self.0, nBar, bShow) == TRUE}
 	}
 
-	fn EnableScrollBar (&self,uSBFlags:UINT,uArrowFlags:UINT) -> bool {
+	pub fn EnableScrollBar (&self,uSBFlags:UINT,uArrowFlags:UINT) -> bool {
 		self.assert_window();
-		unsafe{user32::EnableScrollBar(self.GetHwnd(), uSBFlags, uArrowFlags) == TRUE}
+		unsafe{user32::EnableScrollBar(self.0, uSBFlags, uArrowFlags) == TRUE}
 	}
 
-	fn IsChild (&self,hWnd:HWND) -> bool {
+	pub fn IsChild (&self,hWnd:HWND) -> bool {
 		self.assert_window();
-		unsafe{user32::IsChild(self.GetHwnd(), hWnd) == TRUE}
+		unsafe{user32::IsChild(self.0, hWnd) == TRUE}
 	}
 
-	fn GetDlgCtrlID (&self) -> c_int {
+	pub fn GetDlgCtrlID (&self) -> c_int {
 		self.assert_window();
-		unsafe{user32::GetDlgCtrlID(self.GetHwnd())}
+		unsafe{user32::GetDlgCtrlID(self.0)}
 	}
 
-	fn SetDlgCtrlID (&self,nID:c_int) -> c_int {
+	pub fn SetDlgCtrlID (&self,nID:c_int) -> c_int {
 		self.assert_window();
-		unsafe{user32::SetWindowLongW(self.GetHwnd(), GWL_ID, nID)}
+		unsafe{user32::SetWindowLongW(self.0, GWL_ID, nID)}
 	}
 
-	fn FlashWindow (&self,bInvert:BOOL) -> bool {
+	pub fn FlashWindow (&self,bInvert:BOOL) -> bool {
 		self.assert_window();
-		unsafe{user32::FlashWindow(self.GetHwnd(), bInvert) == TRUE}
+		unsafe{user32::FlashWindow(self.0, bInvert) == TRUE}
 	}
 
-	// fn MessageBox(&self,lpszText:LPCTSTR ,lpszCaption:LPCTSTR,nType:UINT) -> c_int {
+	// pub fn MessageBox(&self,lpszText:LPCTSTR ,lpszCaption:LPCTSTR,nType:UINT) -> c_int {
 	// 	self.assert_window();
-	// 	user32::MessageBox(self.GetHwnd(), lpszText, lpszCaption, nType)
+	// 	user32::MessageBox(self.0, lpszText, lpszCaption, nType)
 	// }
 
-	fn ChangeClipboardChain (&self,hWndNewNext:HWND) -> bool {
+	pub fn ChangeClipboardChain (&self,hWndNewNext:HWND) -> bool {
 		self.assert_window();
-		unsafe{user32::ChangeClipboardChain(self.GetHwnd(), hWndNewNext) == TRUE}
+		unsafe{user32::ChangeClipboardChain(self.0, hWndNewNext) == TRUE}
 	}
 
-	fn SetClipboardViewer (&self) -> HWND {
+	pub fn SetClipboardViewer (&self) -> HWND {
 		self.assert_window();
-		unsafe{user32::SetClipboardViewer(self.GetHwnd())}
+		unsafe{user32::SetClipboardViewer(self.0)}
 	}
 
-	fn OpenClipboard (&self) -> bool {
+	pub fn OpenClipboard (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::OpenClipboard(self.GetHwnd()) == TRUE}
+		unsafe{user32::OpenClipboard(self.0) == TRUE}
 	}
 
 
 
-	fn CreateCaret (&self,hBitmap:HBITMAP) -> bool {
+	pub fn CreateCaret (&self,hBitmap:HBITMAP) -> bool {
 		self.assert_window();
-		unsafe{user32::CreateCaret(self.GetHwnd(), hBitmap, 0, 0) == TRUE}
+		unsafe{user32::CreateCaret(self.0, hBitmap, 0, 0) == TRUE}
 	}
 
-	fn CreateSolidCaret (&self,nWidth:c_int,nHeight:c_int) -> bool {
+	pub fn CreateSolidCaret (&self,nWidth:c_int,nHeight:c_int) -> bool {
 		self.assert_window();
-		unsafe{user32::CreateCaret(self.GetHwnd(), 0 as HBITMAP, nWidth, nHeight) == TRUE}
+		unsafe{user32::CreateCaret(self.0, 0 as HBITMAP, nWidth, nHeight) == TRUE}
 	}
 
-	fn CreateGrayCaret (&self,nWidth:c_int,nHeight:c_int) -> bool {
+	pub fn CreateGrayCaret (&self,nWidth:c_int,nHeight:c_int) -> bool {
 		self.assert_window();
-		unsafe{user32::CreateCaret(self.GetHwnd(), 1 as HBITMAP, nWidth, nHeight) == TRUE}
+		unsafe{user32::CreateCaret(self.0, 1 as HBITMAP, nWidth, nHeight) == TRUE}
 	}
 
-	fn HideCaret (&self) -> bool {
+	pub fn HideCaret (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::HideCaret(self.GetHwnd()) == TRUE}
+		unsafe{user32::HideCaret(self.0) == TRUE}
 	}
 
-	fn ShowCaret (&self) -> bool {
+	pub fn ShowCaret (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::ShowCaret(self.GetHwnd()) == TRUE}
+		unsafe{user32::ShowCaret(self.0) == TRUE}
 	}
 
-	fn DragAcceptFiles (&self,bAccept:BOOL)  {
+	pub fn DragAcceptFiles (&self,bAccept:BOOL)  {
 		self.assert_window(); 
 		unsafe{
-			shell32::DragAcceptFiles(self.GetHwnd(), bAccept);	
+			shell32::DragAcceptFiles(self.0, bAccept);	
 		}
 	}
 
-	fn SetIcon (&self,hIcon:HICON,bBigIcon:BOOL) -> HICON {
+	pub fn SetIcon (&self,hIcon:HICON,bBigIcon:BOOL) -> HICON {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_SETICON, bBigIcon as WPARAM, hIcon as LPARAM) as HICON}
+		unsafe{user32::SendMessageW(self.0, WM_SETICON, bBigIcon as WPARAM, hIcon as LPARAM) as HICON}
 	}
 
-	fn GetIcon (&self,bBigIcon:BOOL) -> HICON {
+	pub fn GetIcon (&self,bBigIcon:BOOL) -> HICON {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_GETICON, bBigIcon as WPARAM, 0 as LPARAM) as HICON}
+		unsafe{user32::SendMessageW(self.0, WM_GETICON, bBigIcon as WPARAM, 0 as LPARAM) as HICON}
 	}
 
-	// fn WinHelp (&self,lpszHelp:LPCTSTR,nCmd:UINT,dwData:DWORD) -> bool {
+	// pub fn WinHelp (&self,lpszHelp:LPCTSTR,nCmd:UINT,dwData:DWORD) -> bool {
 	// 	self.assert_window();
-	// 	user32::WinHelp(self.GetHwnd(), lpszHelp, nCmd, dwData) == TRUE
+	// 	user32::WinHelp(self.0, lpszHelp, nCmd, dwData) == TRUE
 	// }
 
-	fn SetWindowContextHelpId (&self,dwContextHelpId:DWORD) -> bool {
+	pub fn SetWindowContextHelpId (&self,dwContextHelpId:DWORD) -> bool {
 		self.assert_window();
-		unsafe{user32::SetWindowContextHelpId(self.GetHwnd(), dwContextHelpId) == TRUE}
+		unsafe{user32::SetWindowContextHelpId(self.0, dwContextHelpId) == TRUE}
 	}
 
-	fn GetWindowContextHelpId (&self) -> DWORD {
+	pub fn GetWindowContextHelpId (&self) -> DWORD {
 		self.assert_window();
-		unsafe{user32::GetWindowContextHelpId(self.GetHwnd())}
+		unsafe{user32::GetWindowContextHelpId(self.0)}
 	}
 
-	fn SetHotKey (&self,wVirtualKeyCode:WORD,wModifiers:WORD) -> c_int {
+	pub fn SetHotKey (&self,wVirtualKeyCode:WORD,wModifiers:WORD) -> c_int {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_SETHOTKEY, MAKEWORD(wVirtualKeyCode as u8, wModifiers as u8) as WPARAM, 0 ) as c_int}
+		unsafe{user32::SendMessageW(self.0, WM_SETHOTKEY, MAKEWORD(wVirtualKeyCode as u8, wModifiers as u8) as WPARAM, 0 ) as c_int}
 	}
 
-	fn GetHotKey (&self) -> DWORD {
+	pub fn GetHotKey (&self) -> DWORD {
 		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_GETHOTKEY, 0, 0) as DWORD}
+		unsafe{user32::SendMessageW(self.0, WM_GETHOTKEY, 0, 0) as DWORD}
 	}
 
-	fn GetScrollInfo (&self,nBar:c_int,lpScrollInfo:LPSCROLLINFO) -> bool {
+	pub fn GetScrollInfo (&self,nBar:c_int,lpScrollInfo:LPSCROLLINFO) -> bool {
 		self.assert_window();
-		unsafe{user32::GetScrollInfo(self.GetHwnd(), nBar, lpScrollInfo) == TRUE}
+		unsafe{user32::GetScrollInfo(self.0, nBar, lpScrollInfo) == TRUE}
 	}
-	fn SetScrollInfo (&self,nBar:c_int,lpScrollInfo:LPSCROLLINFO,bRedraw:BOOL) -> c_int {
+	pub fn SetScrollInfo (&self,nBar:c_int,lpScrollInfo:LPSCROLLINFO,bRedraw:BOOL) -> c_int {
 		self.assert_window();
-		unsafe{user32::SetScrollInfo(self.GetHwnd(), nBar, lpScrollInfo, bRedraw)}
+		unsafe{user32::SetScrollInfo(self.0, nBar, lpScrollInfo, bRedraw)}
 	}
-	fn IsDialogMessage (&self,lpMsg:LPMSG) -> bool {
+	pub fn IsDialogMessage (&self,lpMsg:LPMSG) -> bool {
 		self.assert_window();
-		unsafe{user32::IsDialogMessageW(self.GetHwnd(), lpMsg) == TRUE}
-	}
-
-	fn NextDlgCtrl (&self)  {
-		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_NEXTDLGCTL, 0, 0);}
-	}
-	fn PrevDlgCtrl (&self)  {
-		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_NEXTDLGCTL, 1, 0);}
-	}
-	fn GotoDlgCtrl (&self,hWndCtrl:HWND)  {
-		self.assert_window();
-		unsafe{user32::SendMessageW(self.GetHwnd(), WM_NEXTDLGCTL, hWndCtrl as WPARAM, 1);}
+		unsafe{user32::IsDialogMessageW(self.0, lpMsg) == TRUE}
 	}
 
-	fn ResizeClient (&self,nWidth:c_int,nHeight:c_int,bRedraw:BOOL) -> bool {
+	pub fn NextDlgCtrl (&self)  {
+		self.assert_window();
+		unsafe{user32::SendMessageW(self.0, WM_NEXTDLGCTL, 0, 0);}
+	}
+	pub fn PrevDlgCtrl (&self)  {
+		self.assert_window();
+		unsafe{user32::SendMessageW(self.0, WM_NEXTDLGCTL, 1, 0);}
+	}
+	pub fn GotoDlgCtrl (&self,hWndCtrl:HWND)  {
+		self.assert_window();
+		unsafe{user32::SendMessageW(self.0, WM_NEXTDLGCTL, hWndCtrl as WPARAM, 1);}
+	}
+
+	pub fn ResizeClient (&self,nWidth:c_int,nHeight:c_int,bRedraw:BOOL) -> bool {
 		self.assert_window();
 
 		let mut rcWnd = RECT{left:0,right:0,top:0,bottom:0};
@@ -1110,16 +1099,16 @@ pub trait WindowTrait : HwndTrait {
 		self.SetWindowPos(NULL_HWND, 0, 0, rcWnd.right - rcWnd.left, rcWnd.bottom - rcWnd.top, uFlags)
 	}
 
-	fn GetWindowRgn (&self,hRgn:HRGN) -> c_int {
+	pub fn GetWindowRgn (&self,hRgn:HRGN) -> c_int {
 		self.assert_window();
-		unsafe{user32::GetWindowRgn(self.GetHwnd(), hRgn)}
+		unsafe{user32::GetWindowRgn(self.0, hRgn)}
 	}
-	fn SetWindowRgn (&self,hRgn:HRGN,bRedraw:BOOL) -> c_int {
+	pub fn SetWindowRgn (&self,hRgn:HRGN,bRedraw:BOOL) -> c_int {
 		self.assert_window();
-		unsafe{user32::SetWindowRgn(self.GetHwnd(), hRgn, bRedraw)}
+		unsafe{user32::SetWindowRgn(self.0, hRgn, bRedraw)}
 	}
 
-	fn DeferWindowPos(
+	pub fn DeferWindowPos(
 		 &self,
 		 hWinPosInfo:HDWP,
 		 hWndInsertAfter:HWND,
@@ -1130,43 +1119,43 @@ pub trait WindowTrait : HwndTrait {
 		 uFlags:UINT) -> HDWP
 	{
 		self.assert_window();
-		unsafe{user32::DeferWindowPos(hWinPosInfo, self.GetHwnd(), hWndInsertAfter, x, y, cx, cy, uFlags)}
+		unsafe{user32::DeferWindowPos(hWinPosInfo, self.0, hWndInsertAfter, x, y, cx, cy, uFlags)}
 	}
 
-	fn GetWindowThreadID (&self) -> DWORD {
+	pub fn GetWindowThreadID (&self) -> DWORD {
 		self.assert_window();
-		unsafe{user32::GetWindowThreadProcessId(self.GetHwnd(), 0 as LPDWORD)}
+		unsafe{user32::GetWindowThreadProcessId(self.0, 0 as LPDWORD)}
 	}
 
-	fn GetWindowProcessID (&self) -> DWORD {
+	pub fn GetWindowProcessID (&self) -> DWORD {
 		self.assert_window();
 		let mut dwProcessID:DWORD = 0;
-		unsafe{user32::GetWindowThreadProcessId(self.GetHwnd(), &mut dwProcessID);}
+		unsafe{user32::GetWindowThreadProcessId(self.0, &mut dwProcessID);}
 		dwProcessID
 	}
 
-	fn IsWindow (&self) -> bool {
-		unsafe{user32::IsWindow(self.GetHwnd()) == TRUE}
+	pub fn IsWindow (&self) -> bool {
+		unsafe{user32::IsWindow(self.0) == TRUE}
 	}
-	fn IsWindowUnicode (&self) -> bool {
+	pub fn IsWindowUnicode (&self) -> bool {
 		self.assert_window();
-		unsafe{user32::IsWindowUnicode(self.GetHwnd()) == TRUE}
+		unsafe{user32::IsWindowUnicode(self.0) == TRUE}
 	}
-	// fn IsParentDialog (&self) -> bool {
+	// pub fn IsParentDialog (&self) -> bool {
 	// 	self.assert_window();
 	// 	TCHAR szBuf[8]; 
 	// 	if (GetClassName(GetParent(), szBuf, sizeof(szBuf)/sizeof(szBuf[0])) == 0)
 	// 		return FALSE;
 	// 	return lstrcmp(szBuf, _T("#32770")) == 0;
 	// }
-	fn ShowWindowAsync (&self,nCmdShow:c_int) -> bool {
+	pub fn ShowWindowAsync (&self,nCmdShow:c_int) -> bool {
 		self.assert_window();
-		unsafe{user32::ShowWindowAsync(self.GetHwnd(), nCmdShow) == TRUE}
+		unsafe{user32::ShowWindowAsync(self.0, nCmdShow) == TRUE}
 	}
 
 
-	// fn SendMessageToDescendants (&self,message:UINT,wParam:WPARAM,lParam:LPARAM,bDeep:BOOL)  {
-	// 	for(HWND hWndChild = ::GetTopWindow(self.GetHwnd()); hWndChild != NULL;
+	// pub fn SendMessageToDescendants (&self,message:UINT,wParam:WPARAM,lParam:LPARAM,bDeep:BOOL)  {
+	// 	for(HWND hWndChild = ::GetTopWindow(self.0); hWndChild != NULL;
 	// 		hWndChild = ::GetNextWindow(hWndChild, GW_HWNDNEXT))
 	// 	{
 	// 		::SendMessage(hWndChild, message, wParam, lParam);
@@ -1180,21 +1169,21 @@ pub trait WindowTrait : HwndTrait {
 	// 	}
 	// }
 
-// 	fn CenterWindow (&self,hWndCenter:HWND) -> bool {
+// 	pub fn CenterWindow (&self,hWndCenter:HWND) -> bool {
 // 		self.assert_window();
 		
 // 		DWORD dwStyle = GetStyle();
 // 		if(hWndCenter == NULL)
 // 		{
 // 			if(dwStyle & WS_CHILD)
-// 				hWndCenter = ::GetParent(self.GetHwnd());
+// 				hWndCenter = ::GetParent(self.0);
 // 			else
-// 				hWndCenter = ::GetWindow(self.GetHwnd(), GW_OWNER);
+// 				hWndCenter = ::GetWindow(self.0, GW_OWNER);
 // 		}
 
 		
 // 		RECT rcDlg;
-// 		::GetWindowRect(self.GetHwnd(), &rcDlg);
+// 		::GetWindowRect(self.0, &rcDlg);
 // 		RECT rcArea;
 // 		RECT rcCenter;
 // 		HWND hWndParent;
@@ -1219,7 +1208,7 @@ pub trait WindowTrait : HwndTrait {
 // 			}
 // 			else
 // 			{
-// 				hMonitor = ::MonitorFromWindow(self.GetHwnd(), MONITOR_DEFAULTTONEAREST);
+// 				hMonitor = ::MonitorFromWindow(self.0, MONITOR_DEFAULTTONEAREST);
 // 			}
 // 			ATLENSURE_RETURN_VAL(hMonitor != NULL, FALSE);
 
@@ -1238,7 +1227,7 @@ pub trait WindowTrait : HwndTrait {
 // 		else
 // 		{
 			
-// 			hWndParent = ::GetParent(self.GetHwnd());
+// 			hWndParent = ::GetParent(self.0);
 // 			ATLASSERT(::IsWindow(hWndParent));
 
 // 			::GetClientRect(hWndParent, &rcArea);
@@ -1266,40 +1255,40 @@ pub trait WindowTrait : HwndTrait {
 // 			yTop = rcArea.top;
 
 		
-// 		return ::SetWindowPos(self.GetHwnd(), NULL, xLeft, yTop, -1, -1,
+// 		return ::SetWindowPos(self.0, NULL, xLeft, yTop, -1, -1,
 // 			SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 // 	}
 
-	fn ModifyStyle (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
+	pub fn ModifyStyle (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
 		self.assert_window();
 
-		let dwStyle:DWORD = unsafe{user32::GetWindowLongW(self.GetHwnd(), GWL_STYLE) as DWORD};
+		let dwStyle:DWORD = unsafe{user32::GetWindowLongW(self.0, GWL_STYLE) as DWORD};
 		let dwNewStyle  = (dwStyle & !dwRemove) | dwAdd;
 		if dwStyle == dwNewStyle{
 			return false;
 		}
 
-		unsafe{user32::SetWindowLongW(self.GetHwnd(), GWL_STYLE, dwNewStyle as LONG);}
+		unsafe{user32::SetWindowLongW(self.0, GWL_STYLE, dwNewStyle as LONG);}
 		if nFlags != 0 {
-			unsafe{user32::SetWindowPos(self.GetHwnd(), NULL_HWND, 0, 0, 0, 0,
+			unsafe{user32::SetWindowPos(self.0, NULL_HWND, 0, 0, 0, 0,
 				SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | nFlags)};
 		}
 
 		true
 	}
 
-	fn ModifyStyleEx (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
+	pub fn ModifyStyleEx (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
 		self.assert_window();
 
-		let dwStyle:DWORD = unsafe{user32::GetWindowLongW(self.GetHwnd(), GWL_EXSTYLE) as DWORD};
+		let dwStyle:DWORD = unsafe{user32::GetWindowLongW(self.0, GWL_EXSTYLE) as DWORD};
 		let dwNewStyle:DWORD = (dwStyle & !dwRemove) | dwAdd;
 		if dwStyle == dwNewStyle {
 			return false;
 		}
 
-		unsafe{user32::SetWindowLongW(self.GetHwnd(), GWL_EXSTYLE, dwNewStyle as LONG);}
+		unsafe{user32::SetWindowLongW(self.0, GWL_EXSTYLE, dwNewStyle as LONG);}
 		if nFlags != 0 {
-			unsafe{user32::SetWindowPos(self.GetHwnd(), NULL_HWND, 0, 0, 0, 0,
+			unsafe{user32::SetWindowPos(self.0, NULL_HWND, 0, 0, 0, 0,
 				SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | nFlags)};
 		}
 		true
@@ -1316,7 +1305,7 @@ pub trait WindowTrait : HwndTrait {
 	// 	::SysFreeString(bstrText);
 	// 	bstrText = NULL;
 
-	// 	c_int nLen = ::GetWindowTextLength(self.GetHwnd());
+	// 	c_int nLen = ::GetWindowTextLength(self.0);
 
 	// 	CTempBuffer<TCHAR> lpszText;
 	// 	if(nLen>0)
@@ -1327,7 +1316,7 @@ pub trait WindowTrait : HwndTrait {
 	// 			return FALSE;
 	// 		}
 
-	// 		if(!::GetWindowText(self.GetHwnd(), lpszText, nLen+1))
+	// 		if(!::GetWindowText(self.0, lpszText, nLen+1))
 	// 		{
 	// 			return FALSE;
 	// 		}
