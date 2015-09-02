@@ -4,17 +4,18 @@ extern crate winapi;
 extern crate user32;
 extern crate kernel32;
 
-mod simple;
+
 mod mhc;
-mod about;
+// mod simple;
+// mod about;
 
 fn main() {
 	println!("hello");
-	let mut a = about::AboutDlg::new();
-	a.Create();
+	// let mut a = about::AboutDlg::new();
+	// a.Create();
 
-	let mut s = simple::SimpleDlg::new();
-	s.Create();
+	// let mut s = simple::SimpleDlg::new();
+	// s.Create();
 
 	let mut d = mhc::MainDlg::new();
 	d.do_modal();

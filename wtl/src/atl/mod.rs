@@ -13,4 +13,4 @@ pub mod dialog;
 //pub use self::window_trait::{WindowTrait,NULL_HWND};
 pub use self::cwindow::{CWindow,NULL_HWND};
 
-pub use self::dialog::CDialogImpl;
+pub use self::dialog::{CDialogImpl,CallBack};

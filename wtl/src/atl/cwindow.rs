@@ -72,7 +72,7 @@ impl CWindow {
 
 //this is different from CWinTrait,and it was introdced since wtl-rs
 impl CWindow {
-	pub fn GetHwnd(&self) -> HWND{
+	pub fn GetHwnd(&self) -> HWND {
 		self.0
 	}
 
@@ -98,20 +98,20 @@ impl CWindow {
 
 	//all get functions
 	//output type depends on the inference of compiler
-	pub fn GetParent<T:WindowHandler> (&self) -> T {
-		self.assert_window();
-		T::FromHwnd(unsafe{user32::GetParent(self.0)})
-	}
+	// pub fn GetParent<T:WindowHandler> (&self) -> T {
+	// 	self.assert_window();
+	// 	T::FromHwnd(unsafe{user32::GetParent(self.0)})
+	// }
 
-	pub fn SetParent<T:WindowHandler> (&self,hWndNewParent:HWND) -> T {
-		self.assert_window();
-		T::FromHwnd(unsafe{user32::SetParent(self.0, hWndNewParent)})
-	}
+	// pub fn SetParent<T:WindowHandler> (&self,hWndNewParent:HWND) -> T {
+	// 	self.assert_window();
+	// 	T::FromHwnd(unsafe{user32::SetParent(self.0, hWndNewParent)})
+	// }
 
-	pub fn GetDlgItem<T:WindowHandler> (&self,nID:c_int) -> T {
-		self.assert_window();
-		T::FromHwnd(unsafe{user32::GetDlgItem(self.0, nID)})
-	}
+	// pub fn GetDlgItem<T:WindowHandler> (&self,nID:c_int) -> T {
+	// 	self.assert_window();
+	// 	T::FromHwnd(unsafe{user32::GetDlgItem(self.0, nID)})
+	// }
 
 	//add rewritted functions of above that use cwindow as output,sometimes very convenient
 	pub fn GetParent2 (&self) -> CWindow {

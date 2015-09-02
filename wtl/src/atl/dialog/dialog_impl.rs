@@ -8,12 +8,18 @@ use super::super::thunk;
 use super::super::cwindow::*;
 use super::consts::*;
 
+//*mut c_void,  ,&mut LRESULT,DWORD
+pub type CallBack = fn(pself:*mut c_void,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD ) -> BOOL;
+//FnMut(*mut c_void,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD ) -> BOOL;
 pub struct CDialogImpl {
 	pub cwin  : CWindow,
     thk   : &'static mut thunk::Thunk,
     idd   : WORD,
     state : DWORD,
     m_bModal:bool,
+    //cb    : &'static CallBack,
+    cb    : CallBack,
+    p_cb_self:*mut c_void,
 }
 
 fn MAKEINTRESOURCEW(id:WORD)->LPCWSTR {
@@ -22,34 +28,56 @@ fn MAKEINTRESOURCEW(id:WORD)->LPCWSTR {
 
 //frequently used
 impl CDialogImpl {
-	fn ProcessWindowMessage(&mut self,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD ) -> BOOL{
-		if uMsg == WM_CLOSE{
-			// if self.m_bModal{
-			// 	self.EndDialog(0);
-			// }else{
-			// 	self.DestroyWindow();
-			// }
-			unsafe{user32::PostQuitMessage(0)};
-		}
-		0
-	}
+	// fn ProcessWindowMessage(&mut self,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD ) -> BOOL{
+	// 	if uMsg == WM_CLOSE{
+	// 		// if self.m_bModal{
+	// 		// 	self.EndDialog(0);
+	// 		// }else{
+	// 		// 	self.DestroyWindow();
+	// 		// }
+	// 		unsafe{user32::PostQuitMessage(0)};
+	// 	}
+	// 	0
+	// }
 
 	fn InitThunk(&mut self,h:HWND,dlg_proc:DLGPROC) -> DLGPROC { //convert &mut self to *const T in this method
-		println!("init thunk,thunk addr:{:p}",&dlg_proc);
-		//self.m_hWnd = h;
-		self.cwin.Attach(h);
-		dlg_proc
+		println!("init thunk,thunk addr:0x{:x},self addr:{:p}",dlg_proc as usize,self );
+		let pself = &*self as *const CDialogImpl as *const c_void;
+		let psef2 = self as *mut Self as *mut c_void;
+
+		//unsafe{println!("{:p},{:p},{:p},{:p}", pself,psef2,self,&*(psef2 as *const Self));}
+
+		self.thk.init(dlg_proc as DWORD_PTR, pself);
+		println!("{}", self.thk);
+		
+		let p = self.thk.GetCodeAddress();
+		println!("init thunk,addr:{:p}", p);
+		// let p1 = p as usize;
+		// let pfunc:DLGPROC = p1 as CallBack;
+		// self.cwin.Attach(h);
+		// pfunc
+		//let p1:fn() = 100 as *const fn() as  fn();
+		//let v:DLGPROC= 
+		//dlg_proc
+		unsafe { std::mem::transmute(p) }
 	}
 
-	pub fn new(idd:WORD)->CDialogImpl{
+	pub fn new(idd:WORD,cb:CallBack)->CDialogImpl{
+		//println!("cb addr rx:{:p}", cb);
 		CDialogImpl{
 			cwin  : CWindow::new(NULL_HWND),
 			thk   : thunk::get_thunk(),
 			idd   : idd,
 			state : 0,
 			m_bModal:false,
+			p_cb_self:0 as *mut c_void,
+			cb:cb,
 			//msg_handler : MsgHandler::new(),
 		}
+	}
+
+	pub fn set_pself(&mut self,p_cb_self:*mut c_void,){
+		self.p_cb_self = p_cb_self;
 	}
 }
 
@@ -144,20 +172,35 @@ impl CDialogImpl {
 impl CDialogImpl {
 	unsafe extern "system" fn StartDialogProc(hWnd:HWND ,uMsg:UINT ,wParam:WPARAM ,lParam:LPARAM ) -> INT_PTR {
 		let p_this = thunk::get_this();
+		println!("4. get this:{:p}", p_this);
 		let pself = p_this as *mut Self;
-		println!("start dialog proc,addr:{:p},DialogProc:{:p}",&Self::StartDialogProc,&Self::DialogProc);
+		println!("5. start dialog proc,addr:0x{:x},DialogProc:0x{:x}",Self::StartDialogProc as usize,Self::DialogProc as usize);
+
+		println!("6. dlg_proc before init thunk:0x{:x}", Self::DialogProc as usize);
+
 
 		let dlg_proc = Self::InitThunk(&mut *pself,hWnd,Self::DialogProc);
+		println!("7. start proc,thunk addr:0x{:x}", dlg_proc as usize);
 		//user32::SetWindowLongPtrW(hWnd, DWLP_DLGPROC, dlg_proc as LONG_PTR);
 		user32::SetWindowLongPtrW(hWnd, (std::mem::size_of::<LRESULT>() + DWLP_MSGRESULT as usize) as c_int, dlg_proc as LONG_PTR);
+		
+		//return 0;
 		//T::Attach(&mut *pself,hWnd);		//UFCS			
 		//T::ProcessMessage(&*pself,hWnd,uMsg,wParam,lParam);
-		dlg_proc(hWnd, uMsg, wParam, lParam)
+		let r = unsafe{dlg_proc(hWnd, uMsg, wParam, lParam)};
+		println!("ok");
+		r
 	}
 
 	fn DialogProcLocal(&mut self,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM)->INT_PTR{
 		let mut lRes:LRESULT = 0;
-		let mut bRet = self.ProcessWindowMessage(hWnd,uMsg,wParam,lParam,&mut lRes,0);
+		//println!("{:p}", self);
+		//let mut bRet = self.ProcessWindowMessage(hWnd,uMsg,wParam,lParam,&mut lRes,0);
+		//,&mut lRes,0
+		let mut bRet = unsafe{(self.cb)(self.p_cb_self,hWnd,uMsg,wParam,lParam,&mut lRes,0)};//unsafe{};
+		//println!("{}", self.state);
+		//return 0;
+		
 		if bRet == TRUE{
 			match uMsg{
 				WM_COMPAREITEM|WM_VKEYTOITEM|WM_CHARTOITEM|WM_INITDIALOG|WM_QUERYDRAGICON|WM_CTLCOLORMSGBOX|WM_CTLCOLOREDIT|
@@ -177,6 +220,7 @@ impl CDialogImpl {
 			//Self::AddState(&*p_self,WINSTATE_DESTROYED);
 			self.state |= WINSTATE_DESTROYED;
 		}
+		
 
 		//I don't know this variable mean,it points to a stack value ,where set NULL?  pThis->m_pCurrentMsg == NULL
 		// if (pThis->m_dwState & WINSTATE_DESTROYED) // && pThis->m_pCurrentMsg == NULL)
@@ -202,7 +246,7 @@ impl CDialogImpl {
 	unsafe extern "system" fn DialogProc(hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM) -> INT_PTR {
 		let p_self = hWnd as *mut Self;
 		//println!("dialog proc");
-
+		//println!("{:p},{:p}", &mut *p_self,p_self);
 		//Self::ProcessWindowMessage(&*p_self,hWnd,uMsg,wParam,lParam,&mut lRes,0);
 		//most of the code move to DialogProcLocal,it will be conveient to visit all field of CDialogImpl
 		Self::DialogProcLocal(&mut *p_self,hWnd,uMsg,wParam,lParam)

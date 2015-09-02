@@ -7,7 +7,7 @@ pub mod dialog_impl;
 #[allow(dead_code)]
 mod consts;
 
-pub use self::dialog_impl::CDialogImpl;
+pub use self::dialog_impl::{CDialogImpl,CallBack};
 //pub use self::dialog::{Dialog,MsgMapTrait};
 
 

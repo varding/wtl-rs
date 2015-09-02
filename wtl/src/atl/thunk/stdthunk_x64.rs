@@ -5,8 +5,9 @@ pub mod imp {
 	use std;
 	use winapi::{USHORT,ULONG64,c_void,DWORD_PTR,LPCVOID,SIZE_T};
 	use kernel32;
-	
-	#[repr(C)] #[derive(Default,Debug)]
+	use std::fmt;
+
+	#[repr(C,packed)] #[derive(Default,Debug)]
 	pub struct Thunk {
 		rcx_mov:USHORT,         // mov rcx, pThis
 	    rcx_imm:ULONG64,         //
@@ -30,7 +31,34 @@ pub mod imp {
         		let p = self as *const Thunk;
         		kernel32::FlushInstructionCache(kernel32::GetCurrentProcess(), p as LPCVOID, std::mem::size_of::<Thunk>() as SIZE_T);
         	}
+        	println!("{}", std::mem::size_of_val(self));
 		}
+
+		pub fn GetCodeAddress(&self)->*const Thunk {
+			self as *const Self
+		}
+	}
+
+	impl fmt::Display for Thunk {
+		fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+			// try!(writeln!(f, "thunk:{:p} ", self));
+	  //       try!(writeln!(f, "move:0x{:x} ", self.rcx_mov));
+	  //       try!(writeln!(f, "this:0x{:x} ", self.rcx_imm));
+	  //       try!(writeln!(f, "move:0x{:x} ", self.rax_mov));
+	  //       try!(writeln!(f, "target:0x{:x} ", self.rax_imm));
+	  //       try!(writeln!(f, "jmp:0x{:x} ", self.rax_jmp));
+	  		//disp as hex
+	  		let bytes = std::mem::size_of::<Thunk>();
+	  		let mut p = self as * const Thunk as *const u8;
+	  		for i in 0..bytes{
+	  			unsafe{
+	  				
+	  				try!(write!(f, "{:x} ", *p));
+	  				p = p.offset(1);
+	  			}
+	  		}
+	        Ok(())
+	    }
 	}
 }
 

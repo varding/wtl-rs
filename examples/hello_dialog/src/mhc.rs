@@ -1,8 +1,8 @@
 
 
-//use user32;
+use user32;
 // use kernel32;
-// use winapi::*;
+ use winapi::*;
  use wtl::atl::*;
 
 //use about;
@@ -19,8 +19,15 @@ pub struct MainDlg {
 
 impl MainDlg {
 	pub fn new()-> MainDlg{
+		// let mut m = MainDlg{
+		// 	dlg:CDialogImpl::new(129,Self::DialogProc)
+		// };
+		// let pself = &mut m as *mut MainDlg as  *mut c_void;
+		// m.dlg.set_pself(pself);
+		// //println!("real cb:{:p}", &Self::DialogProc);
+		// m
 		MainDlg{
-			dlg:CDialogImpl::new(129)
+			dlg:CDialogImpl::new(129,Self::DialogProc)
 		}
 	}
 
@@ -30,7 +37,23 @@ impl MainDlg {
 		// 	0
 		// });
 		//self.dlg.DoModal(NULL_HWND, 0 as LPARAM);
+		let pself = self as *mut Self as *mut c_void;
+		self.dlg.set_pself(pself);
 		self.dlg.DoModal2();
+	}
+	// unsafe extern "system" fn(HWND, UINT, WPARAM, LPARAM) -> INT_PTR;
+	//pself:*mut c_void,  ,lResult:&mut LRESULT,dwMsgMapID:DWORD
+	//pub fn DialogProc(hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM ) -> INT_PTR{
+	pub fn DialogProc(pself:*mut c_void,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD ) -> BOOL{
+		if uMsg == WM_CLOSE{
+		// if self.m_bModal{
+		// 	self.EndDialog(0);
+		// }else{
+		// 	self.DestroyWindow();
+		// }
+			unsafe{user32::PostQuitMessage(0)};
+		}
+		0
 	}
 }	
 
