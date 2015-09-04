@@ -46,6 +46,9 @@ impl AboutDlg {
 		}
 	}
 
-	//no init_dialog,left params empty
-	impl_proc_msg!();
+	pub fn OnInitDialog(&mut self) {
+		self.dlg.CenterWindow(NULL_HWND);
+	}
+	//pass OnInitDialog as param, if no init_dialog,left params empty
+	impl_proc_msg!(OnInitDialog);
 }

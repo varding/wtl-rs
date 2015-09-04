@@ -748,9 +748,9 @@ extern "system" {
     pub fn ModifyMenuW(
         hMnu: HMENU, uPosition: UINT, uFlags: UINT, uIDNewItem: UINT_PTR, lpNewItem: LPCWSTR,
     ) -> BOOL;
-    // pub fn MonitorFromPoint();
-    // pub fn MonitorFromRect();
-    // pub fn MonitorFromWindow();
+    pub fn MonitorFromPoint(pt:POINT,dwFlags:DWORD) -> HMONITOR;
+    pub fn MonitorFromRect(lprc: LPCRECT,dwFlags: DWORD) -> HMONITOR;
+    pub fn MonitorFromWindow(hwnd: HWND,dwFlags: DWORD) -> HMONITOR;
     pub fn MoveWindow(
         hWnd: HWND, X: c_int, Y: c_int, nWidth: c_int, nHeight: c_int, bRepaint: BOOL,
     ) -> BOOL;

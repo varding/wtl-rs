@@ -37,6 +37,7 @@ impl MainDlg {
 	}
 
 	pub fn OnInitDialog(&mut self) {
+		self.dlg.CenterWindow(NULL_HWND);
 		self.about_dlg.Create(self.dlg.GetHwnd());
 	}
 

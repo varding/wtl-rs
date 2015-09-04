@@ -1,5 +1,5 @@
 
-
+use std;
 use winapi::*;
 use user32;
 use shell32;
@@ -1125,95 +1125,96 @@ impl CWindow {
 	// 	}
 	// }
 
-// 	pub fn CenterWindow (&self,hWndCenter:HWND) -> bool {
-// 		self.assert_window();
-		
-// 		DWORD dwStyle = GetStyle();
-// 		if(hWndCenter == NULL)
-// 		{
-// 			if(dwStyle & WS_CHILD)
-// 				hWndCenter = ::GetParent(self.0);
-// 			else
-// 				hWndCenter = ::GetWindow(self.0, GW_OWNER);
-// 		}
-
-		
-// 		RECT rcDlg;
-// 		::GetWindowRect(self.0, &rcDlg);
-// 		RECT rcArea;
-// 		RECT rcCenter;
-// 		HWND hWndParent;
-// 		if(!(dwStyle & WS_CHILD))
-// 		{
-			
-// 			if(hWndCenter != NULL)
-// 			{
-// 				DWORD dwStyleCenter = ::GetWindowLong(hWndCenter, GWL_STYLE);
-// 				if(!(dwStyleCenter & WS_VISIBLE) || (dwStyleCenter & WS_MINIMIZE))
-// 					hWndCenter = NULL;
-// 			}
+	pub fn CenterWindow (&self,hCenter:HWND) -> BOOL {
+		self.assert_window();
+		let mut hWndCenter = hCenter;
+		unsafe{
+			let dwStyle = self.GetStyle();
+			if hWndCenter == NULL_HWND {
+				if dwStyle & WS_CHILD != 0{
+					hWndCenter = self.GetParent2().GetHwnd();//::GetParent(self.0);
+				}
+				else{
+					hWndCenter = user32::GetWindow(self.0, GW_OWNER);
+				}
+			}
 
 			
-// #if WINVER < 0x0500
-// 			::SystemParametersInfo(SPI_GETWORKAREA, NULL, &rcArea, NULL);
-// #else
-// 			HMONITOR hMonitor = NULL;
-// 			if(hWndCenter != NULL)
-// 			{
-// 				hMonitor = ::MonitorFromWindow(hWndCenter, MONITOR_DEFAULTTONEAREST);
-// 			}
-// 			else
-// 			{
-// 				hMonitor = ::MonitorFromWindow(self.0, MONITOR_DEFAULTTONEAREST);
-// 			}
-// 			ATLENSURE_RETURN_VAL(hMonitor != NULL, FALSE);
+			let mut rcDlg:RECT = Default::default();
+			user32::GetWindowRect(self.0, &mut rcDlg);
+			let mut rcArea  :RECT = Default::default();
+			let mut rcCenter:RECT = Default::default();
+			let hWndParent:HWND;
+			if dwStyle & WS_CHILD == 0 {
+				
+				if hWndCenter != NULL_HWND {
+					let dwStyleCenter = user32::GetWindowLongW(hWndCenter, GWL_STYLE) as DWORD;
+					if (dwStyleCenter & WS_VISIBLE) == 0 || (dwStyleCenter & WS_MINIMIZE) != 0 {
+						hWndCenter = NULL_HWND;
+					}
+				}
 
-// 			MONITORINFO minfo;
-// 			minfo.cbSize = sizeof(MONITORINFO);
-// 			BOOL bResult = ::GetMonitorInfo(hMonitor, &minfo);
-// 			ATLENSURE_RETURN_VAL(bResult, FALSE);
+				//>=win2k
+				let mut hMonitor:HMONITOR = 0 as HMONITOR;
+				if hWndCenter != NULL_HWND {
+					hMonitor = user32::MonitorFromWindow(hWndCenter, MONITOR_DEFAULTTONEAREST);
+				}
+				else {
+					hMonitor = user32::MonitorFromWindow(self.0, MONITOR_DEFAULTTONEAREST);
+				}
+				//ATLENSURE_RETURN_VAL(hMonitor != NULL, FALSE);
+				let mut minfo:MONITORINFO = Default::default();
+				minfo.cbSize = std::mem::size_of::<MONITORINFO>() as DWORD;
+				let bResult:BOOL = user32::GetMonitorInfoW(hMonitor, &mut minfo);
+				//ATLENSURE_RETURN_VAL(bResult, FALSE);
 
-// 			rcArea = minfo.rcWork;
-// #endif
-// 			if(hWndCenter == NULL)
-// 				rcCenter = rcArea;
-// 			else
-// 				::GetWindowRect(hWndCenter, &rcCenter);
-// 		}
-// 		else
-// 		{
+				rcArea = minfo.rcWork;
+
+				if hWndCenter == NULL_HWND{
+					rcCenter = rcArea;
+				}
+				else {
+					user32::GetWindowRect(hWndCenter, &mut rcCenter);
+				}
+			}
+			else {
+				
+				hWndParent = user32::GetParent(self.0);
+				//ATLASSERT(::IsWindow(hWndParent));
+
+				user32::GetClientRect(hWndParent, &mut rcArea);
+				//ATLASSERT(::IsWindow(hWndCenter));
+				user32::GetClientRect(hWndCenter, &mut rcCenter);
+				user32::MapWindowPoints(hWndCenter, hWndParent, &mut rcCenter as *mut RECT as *mut POINT, 2);
+			}
+
+			let DlgWidth:c_int  = rcDlg.right - rcDlg.left;
+			let DlgHeight:c_int = rcDlg.bottom - rcDlg.top;
+
 			
-// 			hWndParent = ::GetParent(self.0);
-// 			ATLASSERT(::IsWindow(hWndParent));
+			let mut xLeft:c_int = (rcCenter.left + rcCenter.right) / 2 - DlgWidth / 2;
+			let mut yTop:c_int  = (rcCenter.top + rcCenter.bottom) / 2 - DlgHeight / 2;
 
-// 			::GetClientRect(hWndParent, &rcArea);
-// 			ATLASSERT(::IsWindow(hWndCenter));
-// 			::GetClientRect(hWndCenter, &rcCenter);
-// 			::MapWindowPoints(hWndCenter, hWndParent, (POINT*)&rcCenter, 2);
-// 		}
+			
+			if xLeft + DlgWidth > rcArea.right {
+				xLeft = rcArea.right - DlgWidth;
+			}
 
-// 		c_int DlgWidth = rcDlg.right - rcDlg.left;
-// 		c_int DlgHeight = rcDlg.bottom - rcDlg.top;
+			if xLeft < rcArea.left {
+				xLeft = rcArea.left;
+			}
 
-		
-// 		c_int xLeft = (rcCenter.left + rcCenter.right) / 2 - DlgWidth / 2;
-// 		c_int yTop = (rcCenter.top + rcCenter.bottom) / 2 - DlgHeight / 2;
+			if yTop + DlgHeight > rcArea.bottom {
+				yTop = rcArea.bottom - DlgHeight;
+			}
 
-		
-// 		if(xLeft + DlgWidth > rcArea.right)
-// 			xLeft = rcArea.right - DlgWidth;
-// 		if(xLeft < rcArea.left)
-// 			xLeft = rcArea.left;
-
-// 		if(yTop + DlgHeight > rcArea.bottom)
-// 			yTop = rcArea.bottom - DlgHeight;
-// 		if(yTop < rcArea.top)
-// 			yTop = rcArea.top;
-
-		
-// 		return ::SetWindowPos(self.0, NULL, xLeft, yTop, -1, -1,
-// 			SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-// 	}
+			if yTop < rcArea.top {
+				yTop = rcArea.top;
+			}
+			
+			user32::SetWindowPos(self.0, NULL_HWND, xLeft, yTop, -1, -1,SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)
+		}		
+	}
 
 	pub fn ModifyStyle (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
 		self.assert_window();

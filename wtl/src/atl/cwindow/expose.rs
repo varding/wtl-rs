@@ -553,6 +553,10 @@ macro_rules! expose_cwindow {
 				self.cwin.ShowWindowAsync(nCmdShow)
 			}
 
+			pub fn CenterWindow (&self,hCenter:HWND) -> BOOL {
+				self.cwin.CenterWindow(hCenter)
+			}
+
 			pub fn ModifyStyle (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
 				self.cwin.ModifyStyle(dwRemove,dwAdd,nFlags)
 			}
