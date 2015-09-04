@@ -19,11 +19,8 @@ thread_local!(static TP: RefCell<ThunkPool> = RefCell::new(ThunkPool::new()));
 //pub function
 pub fn get_thunk() -> &'static mut Thunk {
 	TP.with(|tp|{
-		
 		let mut tp_mut = tp.borrow_mut();
-		let t = tp_mut.get_thunk();
-		println!("2. get thunk,addr:{:p}", t);
-		t
+		tp_mut.get_thunk()
 	})
 }
 
@@ -36,7 +33,6 @@ pub fn put_back(t:&mut Thunk){
 
 //a global stores the obj that created a window
 pub fn set_this(p_this:LPVOID){
-	println!("3. save this:{:p}", p_this);
 	TP.with(|tp|{
 		let mut tp_mut = tp.borrow_mut();
 		tp_mut.set_this(p_this);
@@ -84,7 +80,6 @@ impl ThunkPool {
 
 			let mut p_thunk:*mut Thunk = p as *mut Thunk;
 
-			println!("1. alloc {} thunks,addr:{:p}", thunk_cnt,p);
 			//split into thunk and push all the pointers to free_thunks
 			for _i in 0..thunk_cnt{
 				self.free_thunks.push(p_thunk);

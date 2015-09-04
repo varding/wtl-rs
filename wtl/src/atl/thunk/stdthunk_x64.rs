@@ -7,6 +7,7 @@ pub mod imp {
 	use kernel32;
 	use std::fmt;
 
+	//http://kelvinh.github.io/blog/2013/08/05/windows-x64-calling-conventions/
 	#[repr(C,packed)] #[derive(Default,Debug)]
 	pub struct Thunk {
 		rcx_mov:USHORT,         // mov rcx, pThis
@@ -31,7 +32,7 @@ pub mod imp {
         		let p = self as *const Thunk;
         		kernel32::FlushInstructionCache(kernel32::GetCurrentProcess(), p as LPCVOID, std::mem::size_of::<Thunk>() as SIZE_T);
         	}
-        	println!("{}", std::mem::size_of_val(self));
+        	//println!("{}", std::mem::size_of_val(self));
 		}
 
 		pub fn GetCodeAddress(&self)->*const Thunk {

@@ -7,13 +7,9 @@ extern crate kernel32;
 
 mod mhc;
 // mod simple;
-// mod about;
+mod about;
 
 fn main() {
-	println!("hello");
-	// let mut a = about::AboutDlg::new();
-	// a.Create();
-
 	// let mut s = simple::SimpleDlg::new();
 	// s.Create();
 

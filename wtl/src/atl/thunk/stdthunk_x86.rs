@@ -7,7 +7,7 @@ pub mod imp {
 	use winapi::{USHORT,ULONG64};
 	//use kernel32;
 
-	#[repr(C)] #[derive(Default,Debug)]
+	#[repr(C,packed)] #[derive(Default,Debug)]
 	pub struct Thunk {
 	    m_mov:DWORD,          // mov dword ptr [esp+0x4], pThis (esp+0x4 is hWnd)
 		m_this:DWORD,         //
