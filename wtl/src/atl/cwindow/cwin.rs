@@ -39,17 +39,17 @@ impl CWindow {
 	}
 
 	pub fn Attach (&mut self,hWndNew:HWND){
-		assert!(self.0 == NULL_HWND);
-		assert!(hWndNew != NULL_HWND);
+		debug_assert!(self.0 == NULL_HWND);
+		debug_assert!(hWndNew != NULL_HWND);
 		unsafe{
-			assert!(user32::IsWindow(hWndNew) == TRUE);
+			debug_assert!(user32::IsWindow(hWndNew) == TRUE);
 		}
 		self.0 = hWndNew;
 	}
 
 	#[inline]
 	pub fn assert_window(&self) {
-		assert!(self.IsWindow());
+		debug_assert!(self.IsWindow());
 	}
 
 	//all get functions

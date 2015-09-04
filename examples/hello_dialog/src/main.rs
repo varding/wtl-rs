@@ -14,7 +14,7 @@ fn main() {
 	// s.Create();
 
 	let mut d = mhc::MainDlg::new();
-	d.do_modal();
+	d.create();
 }
 
 /*
