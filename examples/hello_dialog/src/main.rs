@@ -1,3 +1,12 @@
+#![feature(custom_attribute, plugin)]
+#![plugin(trace)]
+
+//the three lines below pass argments to linker to make the programe a win32 gui without a console 
+#![feature(link_args)]
+#[link_args = "-Wl,--subsystem,windows"]
+extern {}
+
+
 #[macro_use]
 extern crate wtl;
 extern crate winapi;
@@ -13,8 +22,8 @@ fn main() {
 	// let mut s = simple::SimpleDlg::new();
 	// s.Create();
 
-	let mut d = mhc::MainDlg::new();
-	d.create();
+    let mut d = mhc::MainDlg::new();
+    d.create();
 }
 
 /*

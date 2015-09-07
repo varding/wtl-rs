@@ -6,7 +6,7 @@ use winapi::*;
 //pub const WM_CTLCOLOR:			UINT = 0x0019;
 
 //winsdk 7.0A  OleCtl.h
-pub const OCM__BASE: 			UINT = WM_USER+0x1c00;
+pub const OCM__BASE: 			UINT = WM_USER + 0x1c00;
 pub const OCM_COMMAND: 			UINT = OCM__BASE + WM_COMMAND;
 
 pub const OCM_CTLCOLORBTN: 		UINT = OCM__BASE + WM_CTLCOLORBTN;
