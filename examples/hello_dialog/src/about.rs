@@ -19,17 +19,24 @@ impl AboutDlg {
     }
 
     pub fn Create(&mut self, h: HWND) {
-        self.handler.add_msg_listener(WM_CLOSE, |pself:&Self,uMsg:UINT,wParam:WPARAM,lParam:LPARAM|->LRESULT{
-			println!("close main dlg");
-			pself.dlg.ShowWindow(SW_HIDE);
-			0
-		});
+  //       self.handler.add_msg_listener(WM_CLOSE, |pself:&Self,uMsg:UINT,wParam:WPARAM,lParam:LPARAM|->LRESULT{
+		// 	println!("close main dlg");
+		// 	pself.dlg.ShowWindow(SW_HIDE);
+		// 	0
+		// });
+        self.handler.on_close(|pself|{
+            println!("close main dlg");
+            pself.dlg.ShowWindow(SW_HIDE);
+        });
 
 		//IDOK
-        self.handler.add_cmd_listener(1, |pself:&Self,code:WORD,id:WORD,lParam:LPARAM|->LRESULT {
-			pself.show_msg_dlg(pself.dlg.GetHwnd());
-			0
-		});
+        self.handler.on_btn_click(1, |pself,id,cwin|{
+            pself.show_msg_dlg(pself.dlg.GetHwnd());
+        });
+  //       self.handler.add_cmd_listener(1, |pself:&Self,code:WORD,id:WORD,lParam:LPARAM|->LRESULT {
+		// 	pself.show_msg_dlg(pself.dlg.GetHwnd());
+		// 	0
+		// });
 
         let pself = self as *mut Self as *mut c_void;
         self.dlg.Create2(pself,h);
