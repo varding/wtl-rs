@@ -10,14 +10,6 @@
 //! ``` handler.on_btn_click_vec(&[ID_BTN1,ID_BTN3],||logic stuffs); ```
 //! ``` handler.on_btn_click(ID_BTN2||logic stuffs; ```
 
-
-//use Vec instead of BTreeMap,one message can add more than one listener,and maybe more efficient
-
-//use std::ptr;
-// use user32;
-// use kernel32;
-// use winapi::*;
-// use std::collections::BTreeMap;
 pub use super::CWindow;
 
 pub use self::opt_call::OptCall;
@@ -29,31 +21,6 @@ mod opt_call;
 mod cmd_entry;
 mod msg_entry;
 mod handler;
-
-//use std::cmp::{Ordering, Ord, Eq};
-//type MsgFn = Fn(UINT,WPARAM,LPARAM)->LRESULT;
-//type CmdFn = Fn(code:WORD,id:WORD,lParam:LPARAM)->LRESULT;
-
-//struct RawPt<T: ?Sized>(*mut T);
-// struct RawPt(*mut c_void);
-
-// impl RawPt{
-//     fn as_mut_ref<'a,T>(&self) -> &'a mut T {
-//         unsafe{&mut (*(self.0 as *mut T)}
-//     }
-
-//     fn as_ref<'a,T>(&self) -> &'a T{
-//     	unsafe{&(*(self.0 as *const T)}
-//     }
-
-//     fn new(t:&mut T) -> RawPt<T> {
-//         RawPt(t as * mut T as c_void)
-//     }
-
-//     fn is_null(&self) ->bool {
-//     	self.0 == 0
-//     }
-// }
 
 /*
 /// call entry
