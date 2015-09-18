@@ -5,7 +5,7 @@ use super::CWindow;
 use super::OptCall;
 
 pub struct CmdEntry<T> {
-    //id=>(id,code,CWindow)
+    //id=>(id,CWindow)
     pub on_btn_click: BTreeMap<WORD, OptCall<Fn(&T, WORD,&CWindow)>>,
 }
 

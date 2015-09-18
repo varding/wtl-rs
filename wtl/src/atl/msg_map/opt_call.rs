@@ -17,4 +17,8 @@ impl<F:?Sized> OptCall<F> {
             after :None,
         }
     }
+
+    // pub fn before<F>(&'a mut self,f:F) -> &'a OptCall{
+
+    // }
 }
