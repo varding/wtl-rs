@@ -1,24 +1,31 @@
 #![feature(test,asm)]
 extern crate test;
+extern crate rand;
 
 use test::Bencher;
+use rand::Rng;
 
-static test_len:usize = 10;
-static test_linear_key:u32 = 5;
-static test_binary_key:u32 = 3;
+static test_len:usize = 1000;
+static test_linear_key:u32 = 500;
+static test_binary_key:u32 = 200;
+
 
 /*
 ////////////// Think Pad,R400 Core2 Duo CPU P8600 (2.4G 2.4G) x64 win7 RAM 8G
 test_len = 1000;
 linear_key = 500;
-binary_key = 200;
-running 6 tests
-test bench_binary_search              ... bench:          42 ns/iter (+/- 8)
+binary_key = 900;
+in combine bench: bin search cnt = log2(n) - 5,that means when length < 32 the linear search is used
+running 9 tests
+test bench_binary_search              ... bench:          42 ns/iter (+/- 2)
+test bench_binary_search_lib          ... bench:          40 ns/iter (+/- 3)
 test bench_binary_search_unsafe       ... bench:          41 ns/iter (+/- 2)
-test bench_linear_search              ... bench:         637 ns/iter (+/- 14)
-test bench_linear_sentinel            ... bench:         432 ns/iter (+/- 21)
-test bench_linear_sentinel_unrolling4 ... bench:         431 ns/iter (+/- 45)
-test bench_linear_sentinel_unrolling8 ... bench:         420 ns/iter (+/- 19)
+test bench_combine_search             ... bench:          33 ns/iter (+/- 1)
+test bench_combine_search_foo         ... bench:          33 ns/iter (+/- 1)
+test bench_linear_search              ... bench:         637 ns/iter (+/- 38)
+test bench_linear_sentinel            ... bench:         431 ns/iter (+/- 56)
+test bench_linear_sentinel_unrolling4 ... bench:         427 ns/iter (+/- 29)
+test bench_linear_sentinel_unrolling8 ... bench:         421 ns/iter (+/- 94)
 
 test_len = 100;
 linear_key = 50;
@@ -47,12 +54,16 @@ test bench_linear_sentinel_unrolling8 ... bench:          19 ns/iter (+/- 1)
 
 test_len = 10;
 linear_key = 5;
-binary_key = 3;
-running 6 tests
-test bench_binary_search              ... bench:          11 ns/iter (+/- 0)
-test bench_binary_search_unsafe       ... bench:           9 ns/iter (+/- 0)
-test bench_linear_search              ... bench:           8 ns/iter (+/- 0)
-test bench_linear_sentinel            ... bench:           5 ns/iter (+/- 0)
+binary_key = 5;
+combine search use binary_key ,so if this value is smaller than linear_key,then combine_search will beats linear_search 
+in this situation,that's unfair. Here I chose binary_key = linear_key,but this may affectting the result of binary_search
+running 8 tests
+test bench_binary_search              ... bench:          14 ns/iter (+/- 1)
+test bench_binary_search_lib          ... bench:           3 ns/iter (+/- 0)
+test bench_binary_search_unsafe       ... bench:          13 ns/iter (+/- 0)
+test bench_combine_search             ... bench:           5 ns/iter (+/- 0)
+test bench_linear_search              ... bench:           8 ns/iter (+/- 1)
+test bench_linear_sentinel            ... bench:           5 ns/iter (+/- 1)
 test bench_linear_sentinel_unrolling4 ... bench:           6 ns/iter (+/- 0)
 test bench_linear_sentinel_unrolling8 ... bench:           6 ns/iter (+/- 0)
 */
@@ -292,7 +303,7 @@ fn bench_binary_search(b: &mut Bencher) {
         let mut mid = 0;
         while left < right {
             mid = (left + right) >> 1;
-            assert!(mid < right);
+            //debug_assert!(mid < right);
             //key > v[mid],so left = mid + 1
             if v[mid] < test_binary_key {
                 left = mid + 1;
@@ -333,6 +344,150 @@ fn bench_binary_search_unsafe(b: &mut Bencher) {
             }
         }
         assert!((left == right) && (v[left] == test_binary_key));
+    });
+}
+
+
+#[bench]
+fn bench_binary_search_lib(b: &mut Bencher) {
+
+    let mut v:Vec<u32> = Vec::with_capacity(test_len);
+    for i in (0..test_len) {
+        v.push(i as u32);
+    }
+
+    b.iter(|| {
+        if let Ok(idx) = v.binary_search(&test_binary_key) {
+            assert!(v[idx] == test_binary_key);
+        }else{
+            assert!(false);
+        }
+    });
+}
+
+
+#[bench]
+fn bench_combine_search(b: &mut Bencher) {
+
+    let mut v:Vec<u32> = Vec::with_capacity(test_len);
+    for i in (0..test_len) {
+        v.push(i as u32);
+    }
+
+    //this can be done in the init stage,and use as a const value in the search stage
+    let mut bin_search_cnt = (test_len as f32).log2() as u32;
+
+    // if bin_search_cnt < 5,then bin_search_cnt - 5 will be a very big u32 value that equals max_u32 - bin_search_cnt
+    if bin_search_cnt > 5 {
+        bin_search_cnt -= 5;
+    }else{
+        bin_search_cnt = 0;
+    }
+
+    b.iter(|| {
+        let mut left = 0;
+        let mut right = test_len-1;
+        let mut mid = 0;
+        for i in(0..bin_search_cnt){
+            mid = (left + right) >> 1;
+            //debug_assert!(mid < right);
+            //key > v[mid],so left = mid + 1
+            if v[mid] < test_binary_key {
+                left = mid + 1;
+            }else{
+                //here means v[mid] >= key,v[mid] possibly equal key,so right = mid but not mid - 1
+                right = mid;
+            }
+        }
+
+        let mut i = left;
+        loop{
+            if v[i] >= test_binary_key {
+                break;
+            }
+            i+=1;
+        }
+        assert!(v[i] == test_binary_key);
+    });
+}
+
+#[repr(C,packed)]
+struct Foo {
+    msg : u16,
+    id  : u16,
+    code: u16,
+    r   : u16,
+    r2  : [u8;64],
+}
+
+impl Foo {
+    fn new(r:&mut rand::ThreadRng)->Foo{
+        Foo{
+            msg : r.gen(),
+            id  : r.gen(),
+            code: r.gen(),
+            r   : 0,
+            r2  : [10;64],
+        }
+    }
+
+    #[inline(always)]
+    fn data(&self) -> u64 {
+        unsafe{
+            *(self as *const Self as *const u64)
+        }
+    }
+}
+
+#[bench]
+fn bench_combine_search_foo(b: &mut Bencher) {
+    let mut r = rand::thread_rng();
+    let mut v:Vec<Foo> = Vec::with_capacity(test_len);
+    for i in (0..test_len) {
+        v.push(Foo::new(&mut r));
+    }
+
+    v.sort_by(|f1,f2|{
+        f1.data().cmp(&f2.data())
+    });
+
+    let foo_key = v[test_binary_key as usize].data();
+
+    //this can be done in the init stage,and use as a const value in the search stage
+    let mut bin_search_cnt = (test_len as f32).log2() as u32;
+
+    // if bin_search_cnt < 5,then bin_search_cnt - 5 will be a very big u32 value that equals max_u32 - bin_search_cnt
+    if bin_search_cnt > 5 {
+        bin_search_cnt -= 5;
+    }else{
+        bin_search_cnt = 0;
+    }
+
+    b.iter(|| {
+        let mut left = 0;
+        let mut right = test_len-1;
+        let mut mid = 0;
+        for i in(0..bin_search_cnt){
+            mid = (left + right) >> 1;
+            //debug_assert!(mid < right);
+            //key > v[mid],so left = mid + 1
+            if v[mid].data() < foo_key {
+            //if unsafe{(&*pf.offset(mid as isize)).data() < foo_key} {
+                left = mid + 1;
+            }else{
+                //here means v[mid] >= key,v[mid] possibly equal key,so right = mid but not mid - 1
+                right = mid;
+            }
+        }
+
+        let mut i = left;
+        loop{
+            if v[i].data() >= foo_key {
+                break;
+            }
+            i+=1;
+        }
+        assert!(v[i].data() == foo_key );
     });
 }
 
