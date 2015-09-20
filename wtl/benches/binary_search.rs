@@ -1,9 +1,14 @@
-#![feature(test,asm)]
+#![feature(test,asm,rc_counts)]
+ 
 extern crate test;
 extern crate rand;
+extern crate winapi;
 
 use test::Bencher;
 use rand::Rng;
+use std::rc::Rc;
+use winapi::HWND;
+use std::cmp::Ordering;
 
 static test_len:usize = 1000;
 static test_linear_key:u32 = 500;
@@ -73,13 +78,18 @@ test bench_linear_sentinel_unrolling8 ... bench:           6 ns/iter (+/- 0)
 test_len = 1000;
 linear_key = 500;
 binary_key = 200;
-running 6 tests
-test bench_binary_search              ... bench:          23 ns/iter (+/- 0)
-test bench_binary_search_unsafe       ... bench:          21 ns/iter (+/- 1)
-test bench_linear_search              ... bench:         293 ns/iter (+/- 22)
-test bench_linear_sentinel            ... bench:         229 ns/iter (+/- 8)
-test bench_linear_sentinel_unrolling4 ... bench:         174 ns/iter (+/- 13)
-test bench_linear_sentinel_unrolling8 ... bench:         178 ns/iter (+/- 6)
+running 11 tests
+test bench_binary_search              ... bench:          21 ns/iter (+/- 0)
+test bench_binary_search_cmov         ... bench:          22 ns/iter (+/- 0)
+test bench_binary_search_foo          ... bench:          22 ns/iter (+/- 2)
+test bench_binary_search_lib          ... bench:          12 ns/iter (+/- 1)
+test bench_binary_search_unsafe       ... bench:          20 ns/iter (+/- 1)
+test bench_combine_search             ... bench:          12 ns/iter (+/- 1)
+test bench_combine_search_foo         ... bench:          15 ns/iter (+/- 0)
+test bench_linear_search              ... bench:         293 ns/iter (+/- 32)
+test bench_linear_sentinel            ... bench:         228 ns/iter (+/- 10)
+test bench_linear_sentinel_unrolling4 ... bench:         173 ns/iter (+/- 3)
+test bench_linear_sentinel_unrolling8 ... bench:         168 ns/iter (+/- 2)
 
 test_len = 100;
 linear_key = 50;
@@ -123,9 +133,15 @@ test bench_linear_sentinel_unrolling8 ... bench:           5 ns/iter (+/- 0)
 
 test_len = 10;
 linear_key = 5;
-binary_key = 3;
-running 5 tests
-test bench_binary_search              ... bench:           4 ns/iter (+/- 1)
+binary_key = 2;
+running 11 tests
+test bench_binary_search              ... bench:           4 ns/iter (+/- 0)
+test bench_binary_search_cmov         ... bench:           5 ns/iter (+/- 1)
+test bench_binary_search_foo          ... bench:           8 ns/iter (+/- 0)
+test bench_binary_search_lib          ... bench:           3 ns/iter (+/- 0)
+test bench_binary_search_unsafe       ... bench:           4 ns/iter (+/- 0)
+test bench_combine_search             ... bench:           2 ns/iter (+/- 0)
+test bench_combine_search_foo         ... bench:           2 ns/iter (+/- 0)
 test bench_linear_search              ... bench:           3 ns/iter (+/- 1)
 test bench_linear_sentinel            ... bench:           3 ns/iter (+/- 0)
 test bench_linear_sentinel_unrolling4 ... bench:           2 ns/iter (+/- 0)
@@ -411,32 +427,102 @@ fn bench_combine_search(b: &mut Bencher) {
     });
 }
 
+struct Event {
+    id: i32,
+}
+
 #[repr(C,packed)]
 struct Foo {
     msg : u16,
     id  : u16,
     code: u16,
     r   : u16,
-    r2  : [u8;64],
+    hwnd: HWND,
+    //r2  : [u8;64],
+    call: Rc<Fn(&Event)->u64>,
 }
 
 impl Foo {
-    fn new(r:&mut rand::ThreadRng)->Foo{
+    fn new<F>(r:&mut rand::ThreadRng,f:F)->Foo where F:Fn(&Event)->u64 + 'static {
+        let h:u64 = r.gen();
         Foo{
+            hwnd: h as HWND,
             msg : r.gen(),
             id  : r.gen(),
             code: r.gen(),
             r   : 0,
-            r2  : [10;64],
+            //r2  : [10;64],
+            call: Rc::new(f),
         }
     }
 
     #[inline(always)]
     fn data(&self) -> u64 {
         unsafe{
-            *(self as *const Self as *const u64)
+            *(self as *const _ as *const u64)
         }
     }
+
+    fn cmp(&self,other:&Self)->Ordering {
+        if self.hwnd < other.hwnd {
+            return Ordering::Less;
+        }else if self.hwnd > other.hwnd {
+            return Ordering::Greater;
+        }else{
+            return self.data().cmp(&other.data());
+        }
+    }
+}
+
+#[bench]
+fn bench_binary_search_foo(b: &mut Bencher) {
+    let mut r = rand::thread_rng();
+    let mut v:Vec<Foo> = Vec::with_capacity(test_len);
+    for i in (0..test_len) {
+        v.push(Foo::new(&mut r,|e|100));
+    }
+
+    v.sort_by(|f1,f2|{
+        //f1.data().cmp(&f2.data())
+        f1.cmp(&f2)
+    });
+
+    let foo_key = &v[test_binary_key as usize];
+
+    //check rc counter
+    for i in (0..test_len){
+        assert!(Rc::strong_count(&v[i].call) == 1);    
+        assert!(Rc::weak_count(&v[i].call) == 0);    
+    }
+
+    b.iter(|| {
+        let mut left = 0;
+        let mut right = test_len-1;
+        let mut mid = 0;
+        //for i in(0..bin_search_cnt){
+        while left < right{
+            mid = (left + right) >> 1;
+            //debug_assert!(mid < right);
+            //key > v[mid],so left = mid + 1
+            //if v[mid].data() < foo_key {
+            if v[mid].cmp(&foo_key) == Ordering::Less {
+            //if unsafe{(&*pf.offset(mid as isize)).data() < foo_key} {
+                left = mid + 1;
+            }else{
+                //here means v[mid] >= key,v[mid] possibly equal key,so right = mid but not mid - 1
+                right = mid;
+            }
+        }
+
+        let mut i = left;
+        // loop{
+        //     if v[i].cmp(&foo_key) != Ordering::Less {
+        //         break;
+        //     }
+        //     i+=1;
+        // }
+        assert!(v[i].cmp(&foo_key) == Ordering::Equal );
+    });
 }
 
 #[bench]
@@ -444,21 +530,28 @@ fn bench_combine_search_foo(b: &mut Bencher) {
     let mut r = rand::thread_rng();
     let mut v:Vec<Foo> = Vec::with_capacity(test_len);
     for i in (0..test_len) {
-        v.push(Foo::new(&mut r));
+        v.push(Foo::new(&mut r,|e|100));
     }
 
     v.sort_by(|f1,f2|{
-        f1.data().cmp(&f2.data())
+        //f1.data().cmp(&f2.data())
+        f1.cmp(&f2)
     });
 
-    let foo_key = v[test_binary_key as usize].data();
+    let foo_key = &v[test_binary_key as usize];
 
+    //check rc counter
+    for i in (0..test_len){
+        assert!(Rc::strong_count(&v[i].call) == 1);    
+        assert!(Rc::weak_count(&v[i].call) == 0);    
+    }
+    
     //this can be done in the init stage,and use as a const value in the search stage
     let mut bin_search_cnt = (test_len as f32).log2() as u32;
 
     // if bin_search_cnt < 5,then bin_search_cnt - 5 will be a very big u32 value that equals max_u32 - bin_search_cnt
-    if bin_search_cnt > 5 {
-        bin_search_cnt -= 5;
+    if bin_search_cnt > 4 {
+        bin_search_cnt -= 4;
     }else{
         bin_search_cnt = 0;
     }
@@ -468,10 +561,12 @@ fn bench_combine_search_foo(b: &mut Bencher) {
         let mut right = test_len-1;
         let mut mid = 0;
         for i in(0..bin_search_cnt){
+        //while left < right{
             mid = (left + right) >> 1;
             //debug_assert!(mid < right);
             //key > v[mid],so left = mid + 1
-            if v[mid].data() < foo_key {
+            //if v[mid].data() < foo_key {
+            if v[mid].cmp(&foo_key) == Ordering::Less {
             //if unsafe{(&*pf.offset(mid as isize)).data() < foo_key} {
                 left = mid + 1;
             }else{
@@ -482,68 +577,50 @@ fn bench_combine_search_foo(b: &mut Bencher) {
 
         let mut i = left;
         loop{
-            if v[i].data() >= foo_key {
+            if v[i].cmp(&foo_key) != Ordering::Less {
                 break;
             }
             i+=1;
         }
-        assert!(v[i].data() == foo_key );
+        assert!(v[i].cmp(&foo_key) == Ordering::Equal );
     });
 }
 
+// the compile already optimized with cmov,so the efficiency of this bench is almost the same with ordinary bin search
+#[bench]
+fn bench_binary_search_cmov(b: &mut Bencher) {
 
-//how to use cmov in rust?the following code didn't work
-// #[bench]
-// fn bench_binary_search_cmov(b: &mut Bencher) {
+    let mut v:Vec<u32> = Vec::with_capacity(test_len);
+    for i in (0..test_len) {
+        v.push(i as u32);
+    }
 
-//     let mut v:Vec<u32> = Vec::with_capacity(test_len);
-//     for i in (0..test_len) {
-//         v.push(i as u32);
-//     }
-
-//     b.iter(|| {
-//         let mut left:u32 = 0;
-//         let mut right:u32 = (test_len-1) as u32;
-//         let mut mid:u32 = 0;
-//         while left < right {
-//             mid = (left + right) >> 1;
-//             assert!(mid < right);
-//             unsafe{
-//                 // asm! ("cmpl %3, %2 cmovg %4, %0 cmovle %5, %1"
-//                 //      : "+r" (left), "+r" (right)
-//                 //      : "r" (test_binary_key as u32), "g" (v[mid as usize]), "g" (mid + 1), "g" (mid)
-//                 //      );
-//                 let k = test_binary_key as u32;
-//                 let vv = v[mid as usize];
-//                 asm!("cmpl $1, $0"
-//                     :
-//                     :"r"(k),"g"(vv)
-//                     );
-
-//                 asm!("cmovg $1, $0"
-//                  : "=r"(left)
-//                  : "g"(mid + 1)
-//                  );
-
-//                 asm!("cmovle $1, $0"
-//                  : "=r"(right)
-//                  : "g"(mid)
-//                  );
-//             }
+    b.iter(|| {
+        let mut left:u32 = 0;
+        let mut right:u32 = (test_len-1) as u32;
+        let mut mid:u32 = 0;
+        while left < right {
+            mid = (left + right) >> 1;
+            assert!(mid < right);
+            unsafe{
+                // asm! ("cmpl %3, %2 cmovg %4, %0 cmovle %5, %1"
+                //      : "+r" (left), "+r" (right)
+                //      : "r" (test_binary_key as u32), "g" (v[mid as usize]), "g" (mid + 1), "g" (mid)
+                //      );
+                asm!(
+                    r"
+                    cmp $3, $2;
+                    cmovg $4, $0;
+                    cmovle $5, $1;
+                    "
+                    : "+r"(left),"+r" (right)
+                    : "r"(test_binary_key), "r"(v[mid as usize]),"r"(mid+1),"r"(mid)
+                    : 
+                    :
+                );
+            }
             
-//         }
-//         assert!((left == right) && (v[left as usize] == test_binary_key));
-//     });
-// }
-
-
-// fn add(a: i32, b: i32) -> i32 {
-//     let c: i32;
-//     unsafe {
-//         asm!("add $2, $0"
-//              : "=r"(c)
-//              : "0"(a), "r"(b)
-//              );
-//     }
-//     c
-// }
+        }
+        assert!((left == right) && (v[left as usize] == test_binary_key));
+    });
+}

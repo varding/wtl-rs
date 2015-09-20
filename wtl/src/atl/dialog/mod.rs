@@ -1,5 +1,18 @@
 
-//pub mod dialog;
+
+
+
+
+
+
+
+
+
+
+pub use self::dialog_impl::{Dialog};
+//pub use self::dialog::{Dialog,MsgMapTrait};
+
+
 
 #[allow(non_snake_case,dead_code,unused_variables)]
 pub mod dialog_impl;
@@ -7,9 +20,7 @@ pub mod dialog_impl;
 #[allow(dead_code)]
 mod consts;
 
-pub use self::dialog_impl::{CDialogImpl, ProcWinMsg};
-//pub use self::dialog::{Dialog,MsgMapTrait};
-
+mod event;
 
 
 

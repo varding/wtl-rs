@@ -1,9 +1,9 @@
-#![feature(custom_attribute, plugin)]
+#![feature(custom_attribute, plugin,rc_counts)]
 #![plugin(trace)]
 
 //the three lines below pass argments to linker to make the programe a win32 gui without a console 
-#![feature(link_args)]
-#[link_args = "-Wl,--subsystem,windows"]
+// #![feature(link_args)]
+// #[link_args = "-Wl,--subsystem,windows"]
 extern {}
 
 
@@ -12,19 +12,31 @@ extern crate wtl;
 extern crate winapi;
 extern crate user32;
 extern crate kernel32;
+// extern crate rand;
 
+// use rand::Rng;
+// use std::rc::Rc;
 
+mod ui;
 mod mhc;
-// mod simple;
-mod about;
 
+use ui::DialogHandler;
+// mod simple;
+//mod about;
 
 fn main() {
-	// let mut s = simple::SimpleDlg::new();
-	// s.Create();
+    // message loop
+    let mut msg_loop = ui::MessageLoop::new();
 
-    let mut d = mhc::MainDlg::new();
-    d.create();
+    let main_dlg_handler = mhc::MainDialogHandler;
+
+    //register all handlers
+    main_dlg_handler.register_handler(&mut msg_loop);
+
+    //create root dialog or win
+    msg_loop.create();
+
+    msg_loop.run();
 }
 
 /*

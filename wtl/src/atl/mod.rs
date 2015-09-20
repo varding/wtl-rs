@@ -8,10 +8,10 @@ pub mod thunk;
 
 pub mod dialog;
 
-pub mod msg_map;
+//pub mod msg_map;
 
 
 pub use self::cwindow::{CWindow, NULL_HWND, NULL_LPARAM};
-pub use self::dialog::{CDialogImpl, ProcWinMsg};
+pub use self::dialog::{Dialog};
 
-pub use self::msg_map::Handler;
+//pub use self::msg_map::Handler;
