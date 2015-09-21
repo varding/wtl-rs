@@ -16,6 +16,4 @@ impl Event {
 			lParam:lParam,
 		}
 	}
-
-	
 }

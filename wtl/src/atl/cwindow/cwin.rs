@@ -267,16 +267,14 @@ impl CWindow {
 
 	// }
 
-    pub fn DestroyWindow(&mut self) -> bool {
+    pub fn DestroyWindow(&mut self) -> BOOL {
         self.assert_window();
-        if unsafe {
-            user32::DestroyWindow(self.0)
-        } == FALSE {
-            false
-        } else {
-			//self.set_hwnd(0 as HWND);
-            self.Detach();
-            true
+        unsafe{
+            if user32::DestroyWindow(self.0) == TRUE {
+                self.Detach();
+                return TRUE;
+            }
+            FALSE
         }
     }
 

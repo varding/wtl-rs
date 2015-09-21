@@ -18,25 +18,28 @@ extern crate kernel32;
 // use std::rc::Rc;
 
 mod ui;
-mod mhc;
+mod main_dlg;
+mod about;
 
 use ui::DialogHandler;
-// mod simple;
-//mod about;
 
 fn main() {
-    // message loop
-    let mut msg_loop = ui::MessageLoop::new();
+    
+    let mut root = ui::Root::new();
 
-    let main_dlg_handler = mhc::MainDialogHandler;
+    //////////////////////////////////////////////
+    // register all handlers
+    let main_dlg_handler = main_dlg::MainDialogHandler::new();
+    //register all handlers before create
+    main_dlg_handler.register_handler(&mut root);
 
-    //register all handlers
-    main_dlg_handler.register_handler(&mut msg_loop);
-
+    //////////////////////////////////////////////
     //create root dialog or win
-    msg_loop.create();
+    root.create();
 
-    msg_loop.run();
+    //////////////////////////////////////////////
+    // run message loop
+    ui::MessageLoop::run();
 }
 
 /*

@@ -9,13 +9,13 @@
 
 
 
-pub use self::dialog_impl::{Dialog};
+pub use self::dialog::{Dialog};
 //pub use self::dialog::{Dialog,MsgMapTrait};
-
+pub use self::event::Event;
 
 
 #[allow(non_snake_case,dead_code,unused_variables)]
-pub mod dialog_impl;
+pub mod dialog;
 
 #[allow(dead_code)]
 mod consts;

@@ -4,7 +4,7 @@ use winapi::*;
 use wtl::atl::*;
 
 use super::ui;
-//use about;
+use about;
 
 //static mut depth: u32 = 0;
 
@@ -64,18 +64,32 @@ use super::ui;
 // }
 
 
-pub struct MainDialogHandler;
+pub struct MainDialogHandler{
+    about_dlg_handler: about::AboutDialogHandler,
+}
+
+impl MainDialogHandler {
+    #[inline(always)]    
+    pub fn new()->MainDialogHandler{
+        MainDialogHandler{
+            about_dlg_handler: about::AboutDialogHandler,
+        }
+    }
+}
 
 impl ui::DialogHandler for MainDialogHandler {
-    fn register_handler(&self,m:&mut ui::MessageLoop){
-        m.main_dlg.this.on_init_dialog(0, |e|{
-            println!("hello");
+    fn register_handler(&self,r:&mut ui::Root){
+        r.main_dlg.this.on_init_dialog(0, |e,_|{
+            println!("hello main dlg");
             1
         });
 
-        m.main_dlg.this.on_close(0, |e|{
+        r.main_dlg.this.on_close(0, |e,_|{
+            println!("bye main dlg");
             unsafe{user32::PostQuitMessage(0)};
             1
         });
+
+        self.about_dlg_handler.register_handler(r);
     }
 }

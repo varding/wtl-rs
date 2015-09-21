@@ -12,6 +12,6 @@ pub mod dialog;
 
 
 pub use self::cwindow::{CWindow, NULL_HWND, NULL_LPARAM};
-pub use self::dialog::{Dialog};
+pub use self::dialog::{Dialog,Event};
 
 //pub use self::msg_map::Handler;
