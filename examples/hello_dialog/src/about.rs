@@ -78,9 +78,10 @@ impl ui::DialogHandler for AboutDialogHandler {
         });
 
         r.main_dlg.about_dialog.this_msg().on_close(0, |e:&Event,t:&mut ui::Root|{
-            println!("bye about dlg");
+            println!("hide about dlg");
             //unsafe{user32::PostQuitMessage(0)};
-            t.main_dlg.about_dialog.this.DestroyWindow();
+            //t.main_dlg.about_dialog.this.DestroyWindow();
+            t.main_dlg.about_dialog.this.ShowWindow(SW_HIDE);
             1
         });
     }

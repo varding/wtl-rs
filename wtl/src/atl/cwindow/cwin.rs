@@ -68,6 +68,20 @@ impl CWindow {
 	// 	self.assert_window();
 	// 	T::FromHwnd(unsafe{user32::GetDlgItem(self.0, nID)})
 	// }
+    pub fn GetParent(&self) -> HWND {
+        self.assert_window();
+        unsafe{user32::GetParent(self.0)}
+    }
+
+    pub fn SetParent(&self,hWndNewParent:HWND) -> HWND {
+        self.assert_window();
+        unsafe{user32::SetParent(self.0, hWndNewParent)}
+    }
+
+    pub fn GetDlgItem(&self,nID:c_int) -> HWND {
+        self.assert_window();
+        unsafe{user32::GetDlgItem(self.0, nID)}
+    }
 
 	//add rewritted functions of above that use cwindow as output,sometimes very convenient
     pub fn GetParent2(&self) -> CWindow {

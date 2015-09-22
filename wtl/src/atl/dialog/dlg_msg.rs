@@ -1,17 +1,10 @@
 
-//use std::{self, ptr};
 use winapi::*;
 use user32;
-//use kernel32;
 
-//use std::rc::Rc;
-//use std::cmp::Ordering;
-
-//use super::super::thunk;
 use super::super::cwindow::*;
 use super::consts::*;
 use super::Event;
-
 
 use super::Handler;
 

@@ -90,6 +90,12 @@ impl ui::DialogHandler for MainDialogHandler {
             1
         });
 
+        r.main_dlg.btn_about_handler().on_click(0, |e:&Event,t:&mut ui::Root|{
+            println!("show about dlg");
+            t.main_dlg.about_dialog.this.ShowWindow(SW_SHOW);
+            1
+        });
+
         self.about_dlg_handler.register_handler(r);
     }
 }

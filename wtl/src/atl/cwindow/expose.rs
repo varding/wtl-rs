@@ -21,6 +21,21 @@ impl  {
 	}
 
 	#[inline(always)]
+	pub fn GetParent(&self) -> HWND {
+        self.cwin.GetParent()
+    }
+
+    #[inline(always)]
+    pub fn SetParent(&self,hWndNewParent:HWND) -> HWND {
+        self.cwin.SetParent(hWndNewParent)
+    }
+
+    #[inline(always)]
+    pub fn GetDlgItem(&self,nID:c_int) -> HWND {
+        self.cwin.GetDlgItem(nID)
+    }
+
+	#[inline(always)]
 	pub fn GetParent2 (&self) -> CWindow {
 		self.cwin.GetParent2()
 	}
