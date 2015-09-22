@@ -1,5 +1,5 @@
 
-
+#![allow(non_snake_case,unused_variables)]
 #[cfg(target_arch = "x86_64")]
 pub mod imp {
     use std;

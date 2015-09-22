@@ -1,4 +1,4 @@
-
+#![allow(dead_code,unused_assignments,non_snake_case)]
 use std;
 use winapi::*;
 use user32;

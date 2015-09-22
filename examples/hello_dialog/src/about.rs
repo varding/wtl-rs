@@ -72,15 +72,15 @@ pub struct AboutDialogHandler;
 
 impl ui::DialogHandler for AboutDialogHandler {
     fn register_handler(&self,r:&mut ui::Root){
-        r.main_dlg.about_dialog.on_init_dialog(0, |e,_|{
+        r.main_dlg.about_dialog.this_msg().on_init_dialog(0, |e,_|{
             println!("hello about");
             1
         });
 
-        r.main_dlg.about_dialog.on_close(0, |e:&Event,t:&mut ui::Root|{
+        r.main_dlg.about_dialog.this_msg().on_close(0, |e:&Event,t:&mut ui::Root|{
             println!("bye about dlg");
             //unsafe{user32::PostQuitMessage(0)};
-            t.main_dlg.about_dialog.DestroyWindow();
+            t.main_dlg.about_dialog.this.DestroyWindow();
             1
         });
     }

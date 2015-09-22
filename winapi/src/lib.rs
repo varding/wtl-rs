@@ -1847,7 +1847,7 @@ pub struct SIZE {
     pub cy: LONG
 }
 pub type PSIZE = *mut SIZE;
-
+pub type LPSIZE = *mut SIZE;
 //-------------------------------------------------------------------------------------------------
 // wingdi.h
 // GDI procedure declarations, constant definitions and macros
