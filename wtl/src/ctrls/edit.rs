@@ -1,562 +1,511 @@
-#![allow(non_snake_case,dead_code,unused_variables,unused_assignments)]
+#![allow(non_snake_case,dead_code,unused_variables)]
 
-use std::{self, ptr};
+use atl::{CWindow,NULL_HWND};
 use winapi::*;
-use user32;
-use kernel32;
-
-use std::rc::Rc;
-use std::cmp::Ordering;
-use std::fmt;
-
-use super::super::thunk;
-use super::super::cwindow::*;
+//use user32::*;
 use super::consts::*;
-use super::{Event,DlgMsg};
+use super::types::*;
 
-use ctrls::BtnMsg;
-
-pub struct Dialog<T>{
-    cwin: CWindow, // basic operations for objects that have HWND
-    thk: &'static mut thunk::Thunk, // thunk that convert static function call to
-    idd: WORD, // resource id of the dlg
-    state: DWORD, // destroy or not
-    modal: bool, // is modal dialog
-
-    root:*mut T, //raw pointer to the Root Dialogs
-    //messages
-    bin_search_cnt:u32,         //used for combine search,search step cnt for bin search
-    pub handlers: Vec<Handler<T>>,
+pub struct Edit {
+    cwin: CWindow,
 }
 
-impl<T> fmt::Display for Dialog<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "hwnd:0x{:x}", self.cwin.GetHwnd() as usize)
-    }
-}
-//expose all method of cwindow
-//expose_cwindow!(Dialog);
-
-fn MAKEINTRESOURCEW(id: WORD) -> LPCWSTR {
-    id as usize as LPCWSTR
-}
-
-//frequently used
-impl<T> Dialog<T> {
-    fn InitThunk(&mut self, h: HWND) -> DLGPROC {
-        let pself = self as *mut _ as *mut c_void;
-        self.thk.init(Self::DialogProc as DWORD_PTR, pself);
-        self.cwin.Attach(h);
-        let p = self.thk.GetCodeAddress();
-        unsafe {
-            std::mem::transmute(p)
-        }
-    }
-
-    //user can pass a dlg_proc to override the default DLGPROC of CDialogImpl,and take over every msg your self
-    pub fn new(idd: WORD) -> Dialog<T> {
-        Dialog {
+impl Edit {
+    pub fn new(&self)->Edit{
+        Edit{
             cwin: CWindow::new(NULL_HWND),
-            thk: thunk::get_thunk(),
-            idd: idd,
-            state: 0,
-            modal: false,
-            root: 0 as *mut T,
-            bin_search_cnt:0,
-            handlers:vec![Handler::new(0xFFFF,0xFFFF, 0xFFFF , 0xFFFF, |_,_|{})],   //put a sentinel in the vec
         }
     }
 }
 
-//CDialogImplBaseT
-impl<T> Dialog<T> {
-    unsafe extern "system" fn StartDialogProc(hWnd: HWND,
-                                              uMsg: UINT,
-                                              wParam: WPARAM,
-                                              lParam: LPARAM)
-                                              -> INT_PTR {
-        let p_this = thunk::get_this();
-        //println!("4. get this:{:p}", p_this);
-        let pself = p_this as *mut Self;
-        //println!("5. start dialog proc,addr:0x{:x},DialogProc:0x{:x}",Self::StartDialogProc as usize,Self::DialogProc as usize);
-        //println!("6. proc_msg before init thunk:0x{:x}", Self::DialogProc as usize);
-        let dlg_proc_thunk = Self::InitThunk(&mut *pself, hWnd);
-        //println!("7. start proc,thunk addr:0x{:x}", proc_msg as usize);
-        // handler must be sorted here:before any message been processed
-        Self::sort_handlers(&mut *pself);
+/*
+(1)
+delete const
+) const
+=>
+)
 
-        //DWLP_DLGPROC = sizeof(LRESULT) + DWLP_MSGRESULT
-        user32::SetWindowLongPtrW(hWnd,
-                                  (std::mem::size_of::<LRESULT>() + DWLP_MSGRESULT as usize) as c_int,
-                                  dlg_proc_thunk as LONG_PTR);
+convert fn format
+^\t(\w+)\s+(\w+)\((.*)\)\s+\{
+=>
+\tpub fn \2 \(\3\)->\1 {
 
-        //it is actually the entry of the thunk
-        dlg_proc_thunk(hWnd, uMsg, wParam, lParam)
-    }
+(2)
+delete 
+->void
 
-    //if bHandled return TRUE
-    unsafe extern "system" fn DialogProc(hWnd: HWND,
-                                         uMsg: UINT,
-                                         wParam: WPARAM,
-                                         lParam: LPARAM)
-                                         -> INT_PTR {
-        
-        let mut_self = &mut *(hWnd as *mut Self);
+(3)
+ATLASSERT(::IsWindow(m_hWnd));
+=>
+self.assert_window();
 
-        let mut lRes: LRESULT = 0;
-        let h = mut_self.GetHwnd();
-        let mut bRet = Self::ProcessWindowMessage(mut_self,h,uMsg,wParam,lParam,&mut lRes,0);//unsafe{};
+(4)
+::SendMessage(m_hWnd,
+=>
+self.SendMessage(
 
-        if bRet == TRUE {
-            match uMsg {
-                WM_COMPAREITEM |
-                WM_VKEYTOITEM |
-                WM_CHARTOITEM |
-                WM_INITDIALOG |
-                WM_QUERYDRAGICON |
-                WM_CTLCOLORMSGBOX |
-                WM_CTLCOLOREDIT |
-                WM_CTLCOLORLISTBOX |
-                WM_CTLCOLORBTN |
-                WM_CTLCOLORDLG |
-                WM_CTLCOLORSCROLLBAR |
-                WM_CTLCOLORSTATIC => {
-                    if lRes > 0 {
-                        bRet = TRUE;
-                    }
-                }
-                // return in DWL_MSGRESULT
-                //Make sure the window was not destroyed before setting attributes.
-                _ => {
-                    if mut_self.state & WINSTATE_DESTROYED == 0 {
-                        user32::SetWindowLongPtrW(mut_self.cwin.GetHwnd(),DWLP_MSGRESULT as c_int,lRes);
-                    }
-                }
-            }
-        } else if uMsg == WM_NCDESTROY {
-            mut_self.state |= WINSTATE_DESTROYED;
-        }
+(5) parameter define
 
-        if mut_self.state & WINSTATE_DESTROYED != 0 {
-            let hWndThis = mut_self.cwin.Detach();
-            mut_self.state &= !WINSTATE_DESTROYED;
-            // clean up after dialog is destroyed
-            //mut_self->OnFinalMessage(hWndThis);
-        }
-        bRet as INT_PTR
-        //0
-    }
+// no parameter
+pub fn (\w+)\s*\(\)
+=>
+pub fn \1\(&self)
+
+//one parameter
+pub fn (\w+)\s*\((\w+) (\w+)\)
+=>
+pub fn \1\(&self,\3: \2\)
+// two parameter
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+)\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4)
+
+// three paramter
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4,\7: \6)
+
+//four parameter
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\s*\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4,\7: \6,\9: \8)
+
+(6) coercion
+\(LPARAM\)(\w+)
+=>
+\1 as LPARAM
+
+\(WPARAM\)(\w+)
+=>
+\1 as WPARAM
+
+(7)  define
+#define (\w+)\s+(\w+)
+=>
+\1: UINT = \2;
+
+(8) return convert
+return \((\w+)\)(.*);
+=>
+\2 as \1
+
+(9) replace manually
+WPARAM coercion
+(self.SendMessage\(\s*\w+,\s*)(\w+)(.*)
+=>
+\1 \2 as WPARAM\3
+
+LPARAM coercion
+(self.SendMessage\(.*,.*,\s*)(\w+)(.*)
+=>
+\1 \2 as LPARAM\3
+
+*/
+
+impl Edit{
+// Constructors
+// 	CEditT(HWND hWnd = NULL) : TBase(hWnd)
+// 	{ }
+
+// 	CEditT< TBase >& operator =(HWND hWnd)
+// 	{
+// 		m_hWnd = hWnd;
+// 		return *this;
+// 	}
+
+// 	HWND Create(HWND hWndParent, ATL::_U_RECT rect = NULL, LPCTSTR szWindowName = NULL,
+// 			DWORD dwStyle = 0, DWORD dwExStyle = 0,
+// 			ATL::_U_MENUorID MenuOrID = 0U, LPVOID lpCreateParam = NULL)
+// 	{
+// 		return TBase::Create(GetWndClassName(), hWndParent, rect.m_lpRect, szWindowName, dwStyle, dwExStyle, MenuOrID.m_hMenu, lpCreateParam);
+// 	}
+
+// // Attributes
+// 	static LPCTSTR GetWndClassName()
+// 	{
+// 		return _T("EDIT");
+// 	}
+
+	pub fn CanUndo(&self)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_CANUNDO, 0, 0) as BOOL
+	}
+
+	pub fn GetLineCount(&self)->c_int {
+		self.assert_window();
+		self.SendMessage( EM_GETLINECOUNT, 0, 0) as c_int
+	}
+
+	pub fn GetModify(&self)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_GETMODIFY, 0, 0) as BOOL
+	}
+
+	pub fn SetModify (&self,bModified: BOOL) {
+		self.assert_window();
+		self.SendMessage( EM_SETMODIFY,  bModified as WPARAM, 0);
+	}
+
+	pub fn GetRect(&self,lpRect: LPRECT) {
+		self.assert_window();
+		self.SendMessage( EM_GETRECT, 0, lpRect as LPARAM);
+	}
+
+	pub fn GetSel(&self)->DWORD {
+		self.assert_window();
+		self.SendMessage( EM_GETSEL, 0, 0) as DWORD
+	}
+
+	pub fn GetSel2 (&self,nStartChar: &mut c_int, nEndChar: &mut c_int) {
+		self.assert_window();
+		self.SendMessage( EM_GETSEL, nStartChar as *mut _ as *mut c_void as WPARAM, nEndChar as *mut _ as *mut c_void as LPARAM);
+	}
+
+//#ifndef _WIN32_WCE
+	pub fn GetHandle(&self)->HLOCAL {
+		self.assert_window();
+		self.SendMessage( EM_GETHANDLE, 0, 0) as HLOCAL
+	}
+
+	pub fn SetHandle(&self,hBuffer: HLOCAL) {
+		self.assert_window();
+		self.SendMessage( EM_SETHANDLE, hBuffer as WPARAM, 0);
+	}
+//#endif // !_WIN32_WCE
+
+	pub fn GetMargins(&self)->DWORD {
+		self.assert_window();
+		self.SendMessage( EM_GETMARGINS, 0, 0) as DWORD
+	}
+
+	pub fn GetMargins2 (&self,nLeft: &mut UINT, nRight: &mut UINT) {
+		self.assert_window();
+		let dwRet = self.SendMessage( EM_GETMARGINS, 0, 0) as DWORD;
+		*nLeft = LOWORD(dwRet) as UINT;
+		*nRight = HIWORD(dwRet) as UINT;
+	}
+
+	// WORD wFlags = EC_LEFTMARGIN | EC_RIGHTMARGIN
+	pub fn SetMargins (&self, nLeft: UINT, nRight: UINT, wFlags: WORD) {
+		self.assert_window();
+		self.SendMessage( EM_SETMARGINS,  wFlags as WPARAM, MAKELONG(nLeft as WORD, nRight as WORD) as LPARAM);
+	}
+
+	pub fn GetLimitText(&self)->UINT {
+		self.assert_window();
+		self.SendMessage( EM_GETLIMITTEXT, 0, 0) as UINT
+	}
+
+	pub fn SetLimitText(&self,nMax: UINT) {
+		self.assert_window();
+		self.SendMessage( EM_SETLIMITTEXT,  nMax as WPARAM, 0);
+	}
+
+	pub fn PosFromChar(&self,nChar: UINT)->POINT {
+		self.assert_window();
+		let dwRet = self.SendMessage( EM_POSFROMCHAR,  nChar as WPARAM, 0) as DWORD;
+		POINT{ x:GET_X_LPARAM(dwRet as LPARAM), y:GET_Y_LPARAM(dwRet as LPARAM) }
+	}
+
+	// pLine = NULL
+	pub fn CharFromPos (&self, pt: POINT, pLine: Option<&mut c_int>)->c_int {
+		self.assert_window();
+		let dwRet = self.SendMessage( EM_CHARFROMPOS, 0, MAKELONG(pt.x as WORD, pt.y as WORD) as LPARAM) as DWORD;
+		// if pLine != None{
+		// 	*pLine = (c_int)(short)HIWORD(dwRet);
+		// }
+		if let Some(p) = pLine {
+			*p = HIWORD(dwRet) as c_short as c_int;
+		}
+		LOWORD(dwRet) as c_short as c_int
+	}
+
+	// NOTE: first word in lpszBuffer must contain the size of the buffer!
+	// pub fn GetLine(&self,nIndex: c_int, lpszBuffer: LPTSTR)->c_int {
+	// 	self.assert_window();
+	// 	self.SendMessage( EM_GETLINE, nIndex, lpszBuffer as LPARAM) as c_int
+	// }
+
+	// pub fn GetLine(&self,nIndex: c_int, lpszBuffer: LPTSTR,nMaxLength: c_int)->c_int {
+	// 	self.assert_window();
+	// 	*(LPWORD)lpszBuffer = (WORD)nMaxLength;
+	// 	self.SendMessage( EM_GETLINE, nIndex, lpszBuffer as LPARAM) as c_int
+	// }
+
+	// pub fn GetPasswordChar(&self)->TCHAR {
+	// 	self.assert_window();
+	// 	self.SendMessage( EM_GETPASSWORDCHAR, 0, 0) as TCHAR
+	// }
+
+	// pub fn SetPasswordChar(&self,ch: TCHAR) {
+	// 	self.assert_window();
+	// 	self.SendMessage( EM_SETPASSWORDCHAR, ch, 0);
+	// }
+
+//#ifndef _WIN32_WCE
+	pub fn GetWordBreakProc(&self)->EDITWORDBREAKPROCW {
+		self.assert_window();
+		unsafe{
+			::std::mem::transmute(self.SendMessage( EM_GETWORDBREAKPROC, 0, 0))
+		}
+	}
+
+	pub fn SetWordBreakProc(&self,ewbprc: EDITWORDBREAKPROCW) {
+		self.assert_window();
+		self.SendMessage( EM_SETWORDBREAKPROC, 0, ewbprc as LPARAM);
+	}
+//#endif // !_WIN32_WCE
+
+	pub fn GetFirstVisibleLine(&self)->c_int {
+		self.assert_window();
+		self.SendMessage( EM_GETFIRSTVISIBLELINE, 0, 0) as c_int
+	}
+
+//#ifndef _WIN32_WCE
+	pub fn GetThumb(&self)->c_int {
+		self.assert_window();
+		debug_assert!((self.GetStyle() & ES_MULTILINE) != 0);
+		self.SendMessage( EM_GETTHUMB, 0, 0) as c_int
+	}
+//#endif // !_WIN32_WCE
+
+	pub fn SetReadOnly (&self, bReadOnly: BOOL)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_SETREADONLY,  bReadOnly as WPARAM, 0) as BOOL
+	}
+
+//#if (WINVER >= 0x0500) && !defined(_WIN32_WCE)
+	pub fn GetImeStatus(&self,uStatus: UINT)->UINT {
+		self.assert_window();
+		self.SendMessage( EM_GETIMESTATUS,  uStatus as WPARAM, 0) as UINT
+	}
+
+	pub fn SetImeStatus(&self,uStatus: UINT, uData: UINT)->UINT {
+		self.assert_window();
+		self.SendMessage( EM_SETIMESTATUS,  uStatus as WPARAM,  uData as LPARAM) as UINT
+	}
+//#endif // (WINVER >= 0x0500) && !defined(_WIN32_WCE)
+
+//#if (_WIN32_WINNT >= 0x0501)
+	pub fn GetCueBannerText(&self,lpstrText: LPCWSTR, cchText: c_int)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_GETCUEBANNER, lpstrText as WPARAM,  cchText as LPARAM) as BOOL
+	}
+
+	// bKeepWithFocus - Vista only
+	// pub fn SetCueBannerText (LPCWSTR lpstrText, BOOL bKeepWithFocus = FALSE)->BOOL {
+	// 	self.assert_window();
+	// 	self.SendMessage( EM_SETCUEBANNER, bKeepWithFocus as WPARAM, (LPARAM)(lpstrText)) as BOOL
+	// }
+//#endif // (_WIN32_WINNT >= 0x0501)
+
+// Operations
+	pub fn EmptyUndoBuffer(&self) {
+		self.assert_window();
+		self.SendMessage( EM_EMPTYUNDOBUFFER, 0, 0);
+	}
+
+	pub fn FmtLines(&self,bAddEOL: BOOL)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_FMTLINES,  bAddEOL as WPARAM, 0) as BOOL
+	}
+
+	pub fn LimitText (&self,nChars: c_int) {
+		self.assert_window();
+		self.SendMessage( EM_LIMITTEXT,  nChars as WPARAM, 0);
+	}
+
+	pub fn LineFromChar(&self,nIndex: c_int)->c_int {
+		self.assert_window();
+		self.SendMessage( EM_LINEFROMCHAR,  nIndex as WPARAM, 0) as c_int
+	}
+
+	pub fn LineIndex(&self,nLine: c_int)->c_int {
+		self.assert_window();
+		self.SendMessage( EM_LINEINDEX,  nLine as WPARAM, 0) as c_int
+	}
+
+	pub fn LineLength(&self,nLine: c_int)->c_int {
+		self.assert_window();
+		self.SendMessage( EM_LINELENGTH,  nLine as WPARAM, 0) as c_int
+	}
+
+	pub fn LineScroll(&self,nLines: c_int, nChars: c_int) {
+		self.assert_window();
+		self.SendMessage( EM_LINESCROLL,  nChars as WPARAM,  nLines as LPARAM);
+	}
+
+	// pub fn ReplaceSel(&self,lpszNewText: LPCTSTR, bCanUndo: BOOL) {
+	// 	self.assert_window();
+	// 	self.SendMessage( EM_REPLACESEL, bCanUndo as WPARAM, lpszNewText as LPARAM);
+	// }
+
+	pub fn SetRect(&self,lpRect: LPCRECT) {
+		self.assert_window();
+		self.SendMessage( EM_SETRECT, 0, lpRect as LPARAM);
+	}
+
+	pub fn SetRectNP(&self,lpRect: LPCRECT) {
+		self.assert_window();
+		self.SendMessage( EM_SETRECTNP, 0, lpRect as LPARAM);
+	}
+
+	pub fn SetSel(&self,dwSelection: DWORD, bNoScroll: BOOL) {
+		self.assert_window();
+		self.SendMessage( EM_SETSEL, LOWORD(dwSelection) as WPARAM, HIWORD(dwSelection) as LPARAM);
+		if bNoScroll == FALSE {
+			self.SendMessage( EM_SCROLLCARET, 0, 0);
+		}
+	}
+
+	pub fn SetSel2(&self,nStartChar: c_int, nEndChar: c_int,bNoScroll: BOOL) {
+		self.assert_window();
+		self.SendMessage( EM_SETSEL,  nStartChar as WPARAM,  nEndChar as LPARAM);
+		if bNoScroll == FALSE{
+			self.SendMessage( EM_SCROLLCARET, 0, 0);
+		}
+	}
+
+	pub fn SetSelAll(&self,bNoScroll: BOOL) {
+		self.SetSel2(0, -1, bNoScroll);
+	}
+
+	pub fn SetSelNone(&self,bNoScroll: BOOL) {
+		self.SetSel2(-1, 0, bNoScroll);
+	}
+
+	pub fn SetTabStops3(&self,nTabStops: c_int, rgTabStops: LPINT)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_SETTABSTOPS,  nTabStops as WPARAM, rgTabStops as LPARAM) as BOOL
+	}
+
+	pub fn SetTabStops(&self)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_SETTABSTOPS, 0, 0) as BOOL
+	}
+
+	pub fn SetTabStops2(&self,cxEachStop: *const c_int)->BOOL	{
+		self.assert_window();
+		self.SendMessage( EM_SETTABSTOPS, 1,cxEachStop as LPARAM) as BOOL
+	}
+
+	pub fn ScrollCaret(&self) {
+		self.assert_window();
+		self.SendMessage( EM_SCROLLCARET, 0, 0);
+	}
+
+	pub fn Scroll(&self,nScrollAction: c_int)->c_int {
+		self.assert_window();
+		debug_assert!((self.GetStyle() & ES_MULTILINE) != 0);
+		let lRet = self.SendMessage( EM_SCROLL,  nScrollAction as WPARAM, 0);
+		if HIWORD(lRet as DWORD) as BOOL == FALSE {
+			return -1;   // failed
+		}
+		LOWORD(lRet as DWORD) as c_short as c_int
+		
+	}
+
+	// pub fn InsertText(&self,nInsertAfterChar: c_int, lpstrText: LPCTSTR,bNoScroll: BOOL,bCanUndo: BOOL) {
+	// 	SetSel(nInsertAfterChar, nInsertAfterChar, bNoScroll);
+	// 	ReplaceSel(lpstrText, bCanUndo);
+	// }
+
+	// pub fn AppendText (LPCTSTR lpstrText, BOOL bNoScroll, BOOL bCanUndo ) {
+	// 	InsertText(GetWindowTextLength(), lpstrText, bNoScroll, bCanUndo);
+	// }
+
+//#if (_WIN32_WINNT >= 0x0501)
+	pub fn ShowBalloonTip(&self,pEditBaloonTip: PEDITBALLOONTIP)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_SHOWBALLOONTIP, 0, pEditBaloonTip as LPARAM) as BOOL
+	}
+
+	pub fn HideBalloonTip(&self)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_HIDEBALLOONTIP, 0, 0) as BOOL
+	}
+//#endif // (_WIN32_WINNT >= 0x0501)
+
+//#if (_WIN32_WINNT >= 0x0600)
+	pub fn GetHilite(&self)->DWORD {
+		self.assert_window();
+		self.SendMessage( EM_GETHILITE, 0, 0) as DWORD
+	}
+
+	pub fn GetHilite2(&self, nStartChar: &mut c_int, nEndChar: &mut c_int) {
+		self.assert_window();
+		let dwRet = self.SendMessage( EM_GETHILITE, 0, 0) as DWORD;
+		*nStartChar = LOWORD(dwRet) as c_short as c_int;
+		*nEndChar = HIWORD(dwRet) as c_short as c_int;
+	}
+
+	pub fn SetHilite(&self,nStartChar: c_int, nEndChar: c_int) {
+		self.assert_window();
+		self.SendMessage( EM_SETHILITE,  nStartChar as WPARAM,  nEndChar as LPARAM);
+	}
+//#endif // (_WIN32_WINNT >= 0x0600)
+
+	// Clipboard operations
+	pub fn Undo(&self)->BOOL {
+		self.assert_window();
+		self.SendMessage( EM_UNDO, 0, 0) as BOOL
+	}
+
+	pub fn Clear(&self) {
+		self.assert_window();
+		self.SendMessage( WM_CLEAR, 0, 0);
+	}
+
+	pub fn Copy(&self) {
+		self.assert_window();
+		self.SendMessage( WM_COPY, 0, 0);
+	}
+
+	pub fn Cut(&self) {
+		self.assert_window();
+		self.SendMessage( WM_CUT, 0, 0);
+	}
+
+	pub fn Paste(&self) {
+		self.assert_window();
+		self.SendMessage( WM_PASTE, 0, 0);
+	}
+
+//#ifdef WIN32_PLATFORM_WFSP   // SmartPhone only messages
+	// pub fn GetExtendedStyle(&self)->DWORD {
+	// 	return SendMessage(EM_GETEXTENDEDSTYLE);
+	// }
+
+	// pub fn SetExtendedStyle(&self,dwMask: DWORD, dwExStyle: DWORD)->DWORD {
+	// 	return SendMessage(EM_SETEXTENDEDSTYLE, dwMask as WPARAM, dwExStyle as LPARAM);
+	// }
+
+	// pub fn GetInputMode(&self,bCurrentMode: BOOL)->DWORD {
+	// 	return SendMessage(EM_GETINPUTMODE, 0, bCurrentMode as LPARAM);
+	// }
+
+	// pub fn SetInputMode(&self,dwMode: DWORD)->BOOL {
+	// 	return SendMessage(EM_SETINPUTMODE, 0, dwMode as LPARAM);
+	// }
+
+	// pub fn SetSymbols(&self,szSymbols: LPCTSTR)->BOOL {
+	// 	return SendMessage(EM_SETSYMBOLS, 0, szSymbols as LPARAM);
+	// }
+
+	// pub fn ResetSymbols(&self)->BOOL {
+	// 	return SendMessage(EM_SETSYMBOLS);
+	// }
+//#endif // WIN32_PLATFORM_WFSP
 }
 
-impl<T> Dialog<T> {
-    fn sort_handlers(&mut self) {
-        //sort handlers for search algorithm
-        self.handlers.sort_by(|f1,f2|{
-            f1.cmp(&f2)
-        });
-
-        //calculate how many steps can bin search do
-        self.bin_search_cnt = (self.handlers.len() as f32).log2() as u32;
-
-        // bin_search_cnt - 4 will be a very big u32 value(equals max_u32 - bin_search_cnt) when bin_search_cnt < 4
-        if self.bin_search_cnt > 4 {
-            self.bin_search_cnt -= 4;
-        }else{
-            self.bin_search_cnt = 0;
-        }
-    }
-
-    //messages
-    pub fn ProcessWindowMessage(&mut self,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD ) -> BOOL {
-        let mut e = Event::new(hWnd,uMsg,wParam,lParam,lResult);
-        let k:HandleKey;
-        match uMsg {
-            WM_COMMAND=>{
-                k = HandleKey::new(uMsg, LOWORD(wParam as DWORD), HIWORD(wParam as DWORD));
-            },
-            WM_NOTIFY=>{
-                let p = unsafe{&*(lParam as LPNMHDR)};
-                //id == ((LPNMHDR)lParam)->idFrom && cd == ((LPNMHDR)lParam)->code)
-                // TODO:check if idFrom and code range is u16??
-                k = HandleKey::new(uMsg, p.idFrom as u16,p.code as u16);
-            },
-            _=>{
-                k = HandleKey::new_msg(uMsg);
-            }
-        }
-        self.combine_search(k.key(),&mut e)
-    }
-
-
-    // https://en.wikipedia.org/wiki/Binary_search_algorithm
-    // https://schani.wordpress.com/2010/04/30/linear-vs-binary-search/
-    // according to the bench,the compiler already cmov optimized
-    // return TRUE if message handled
-    fn combine_search(&self,key:u64,e:&mut Event) -> BOOL {
-        // bin search
-        let mut left = 0;
-        let mut right = self.handlers.len() - 1;
-        let mut mid = 0;
-        for i in(0..self.bin_search_cnt){
-            mid = (left + right) >> 1;
-            debug_assert!(mid < right);
-            if self.handlers[mid].key() < key {
-                left = mid + 1;
-            }else{
-                right = mid;
-            }
-        }
-
-        // linear search ,we must put a sentinel at end
-        let mut i = left;
-
-        // find smallest key
-        loop{
-            if self.handlers[i].key() >= key {
-                break;
-            }
-            i+=1;
-        }
-
-        let mut bFind = FALSE;
-        // call
-        while self.handlers[i].key() == key {
-            unsafe{
-                (self.handlers[i].call)(e,&mut *self.root);
-            }
-            bFind = TRUE;
-            i+=1;
-        }
-        bFind
-    }
-}
-
-//CDialogImpl
-impl<T> Dialog<T> {
-    pub fn DoModal2(&mut self,r:*mut T) {
-        let hWndParent = unsafe {
-            user32::GetActiveWindow()
-        };
-        self.DoModal(hWndParent, NULL_LPARAM,r);
-    }
-
-    pub fn DoModal(&mut self,hWndParent: HWND,dwInitParam: LPARAM,r:*mut T) -> INT_PTR {
-        //ATLASSUME(m_hWnd == NULL);
-        self.root = r;
-        self.modal = true;
-        //self.puser = puser;
-        thunk::set_this(self as *mut Self as *mut c_void);
-
-        unsafe {
-            let hInst = kernel32::GetModuleHandleW(ptr::null()) as HINSTANCE;
-            let r = user32::DialogBoxParamW(hInst,
-                                            MAKEINTRESOURCEW(self.idd),
-                                            hWndParent,
-                                            Self::StartDialogProc,
-                                            dwInitParam);
-            //let e = kernel32::GetLastError();
-            //println!("err:{}", e);
-            r
-        }
-    }
-
-    pub fn EndDialog(&self, nRetCode: c_int) -> BOOL {
-        self.cwin.assert_window();
-        assert!(self.modal);
-        unsafe {
-            user32::EndDialog(self.cwin.GetHwnd(), nRetCode as INT_PTR)
-        }
-    }
-
-    // modeless dialogs
-    pub fn Create3(&mut self,r:*mut T) ->HWND {
-        self.Create(NULL_HWND, NULL_LPARAM,r)
-    }
-
-    pub fn Create2(&mut self, hWndParent: HWND,r:*mut T) -> HWND {
-        self.Create(hWndParent, NULL_LPARAM,r)
-    }
-
-    pub fn Create(&mut self, hWndParent: HWND, dwInitParam: LPARAM,r:*mut T) -> HWND {
-        //ATLASSUME(m_hWnd == NULL);
-        self.root = r;
-        thunk::set_this(self as *mut Self as *mut c_void);
-        self.modal = false;
-
-        unsafe {
-            let hWnd = user32::CreateDialogParamW(0 as HINSTANCE,
-                                                  MAKEINTRESOURCEW(self.idd),
-                                                  hWndParent,
-                                                  Self::StartDialogProc,
-                                                  dwInitParam);
-            // let e = kernel32::GetLastError();
-            // println!("err:{}", e);
-            //self.cwin.Attach(hWnd);
-            user32::ShowWindow(hWnd, SW_SHOW);
-            //self.cwin.ShowWindow(SW_SHOW);
-            //ATLASSUME(m_hWnd == hWnd);
-            hWnd
-        }
-    }
-
-    pub fn DestroyWindow(&mut self) -> BOOL {
-        self.cwin.DestroyWindow()
-        // self.cwin.assert_window();
-        // assert!(self.modal == false);
-        // unsafe {
-        //     if user32::DestroyWindow(self.cwin.GetHwnd()) == FALSE {
-        //         return FALSE;
-        //     }
-        // }
-        // return TRUE;
-    }
-}
-
-//CWindowImplRoot
-impl<T> Dialog<T> {
-    fn ForwardNotifications(&self,
-                            uMsg: UINT,
-                            wParam: WPARAM,
-                            lParam: LPARAM,
-                            bHandled: &mut BOOL)
-                            -> LRESULT {
-        let mut lResult: LRESULT = 0;
-        match uMsg {
-            WM_COMMAND |
-            WM_NOTIFY |
-            WM_PARENTNOTIFY |
-            WM_DRAWITEM |
-            WM_MEASUREITEM |
-            WM_COMPAREITEM |
-            WM_DELETEITEM |
-            WM_VKEYTOITEM |
-            WM_CHARTOITEM |
-            WM_HSCROLL |
-            WM_VSCROLL |
-            WM_CTLCOLORBTN |
-            WM_CTLCOLORDLG |
-            WM_CTLCOLOREDIT |
-            WM_CTLCOLORLISTBOX |
-            WM_CTLCOLORMSGBOX |
-            WM_CTLCOLORSCROLLBAR |
-            WM_CTLCOLORSTATIC => {
-                lResult = self.cwin.GetParent2().SendMessage(uMsg, wParam, lParam);
-            }
-            _ => *bHandled = FALSE,
-        }
-        lResult
-    }
-
-    fn ReflectNotifications(&self,
-                            uMsg: UINT,
-                            wParam: WPARAM,
-                            lParam: LPARAM,
-                            bHandled: &mut BOOL)
-                            -> LRESULT {
-        let mut hWndChild = NULL_HWND;
-        unsafe {
-            match uMsg {
-                WM_COMMAND => {
-                    if lParam != NULL_LPARAM {
-                        hWndChild = lParam as HWND;
-                    }
-                }
-                WM_NOTIFY => {
-                    hWndChild = (*(lParam as LPNMHDR)).hwndFrom;
-                }
-                WM_PARENTNOTIFY => {
-                    match LOWORD(wParam as DWORD) as DWORD {
-                        WM_CREATE | WM_DESTROY => hWndChild = lParam as HWND,
-                        _ => hWndChild =
-                                 self.cwin.GetDlgItem2(HIWORD(wParam as DWORD) as c_int).GetHwnd(),
-                    }
-                }
-                WM_DRAWITEM => {
-                    if wParam != 0 {
-                        hWndChild = (*(lParam as LPDRAWITEMSTRUCT)).hwndItem;
-                    }
-                }
-                WM_MEASUREITEM => {
-                    if wParam != 0 {
-                        let id = (*(lParam as LPMEASUREITEMSTRUCT)).CtlID;
-                        hWndChild = self.cwin.GetDlgItem2(id as c_int).GetHwnd();
-                    }
-                }
-                WM_COMPAREITEM => {
-                    if wParam != 0 {
-                        hWndChild = (*(lParam as LPCOMPAREITEMSTRUCT)).hwndItem;
-                    }
-                }
-                WM_DELETEITEM => {
-                    if wParam != 0 {
-                        hWndChild = (*(lParam as LPDELETEITEMSTRUCT)).hwndItem;
-                    }
-                }
-                WM_VKEYTOITEM | WM_CHARTOITEM | WM_HSCROLL | WM_VSCROLL => hWndChild =
-                                                                               lParam as HWND,
-                WM_CTLCOLORBTN |
-                WM_CTLCOLORDLG |
-                WM_CTLCOLOREDIT |
-                WM_CTLCOLORLISTBOX |
-                WM_CTLCOLORMSGBOX |
-                WM_CTLCOLORSCROLLBAR |
-                WM_CTLCOLORSTATIC => hWndChild = lParam as HWND,
-                _ => (),
-            }
-
-            if hWndChild == NULL_HWND {
-                *bHandled = FALSE;
-                return 1;
-            }
-
-            //ATLASSERT(::IsWindow(hWndChild));
-            assert!(user32::IsWindow(hWndChild) == TRUE);
-            user32::SendMessageW(hWndChild, OCM__BASE + uMsg, wParam, lParam)
-        }
-    }
-
-    //static function
-    fn DefaultReflectionHandler(hWnd: HWND,
-                                uMsg: UINT,
-                                wParam: WPARAM,
-                                lParam: LPARAM,
-                                lResult: &mut LRESULT)
-                                -> BOOL {
-        match uMsg {
-            OCM_COMMAND |
-            OCM_NOTIFY |
-            OCM_PARENTNOTIFY |
-            OCM_DRAWITEM |
-            OCM_MEASUREITEM |
-            OCM_COMPAREITEM |
-            OCM_DELETEITEM |
-            OCM_VKEYTOITEM |
-            OCM_CHARTOITEM |
-            OCM_HSCROLL |
-            OCM_VSCROLL |
-            OCM_CTLCOLORBTN |
-            OCM_CTLCOLORDLG |
-            OCM_CTLCOLOREDIT |
-            OCM_CTLCOLORLISTBOX |
-            OCM_CTLCOLORMSGBOX |
-            OCM_CTLCOLORSCROLLBAR |
-            OCM_CTLCOLORSTATIC => {
-                unsafe {
-                    *lResult = user32::DefWindowProcW(hWnd, uMsg - OCM__BASE, wParam, lParam);
-                }
-                return TRUE;
-            }
-            _ => (),
-        }
-        FALSE
-    }
-
-}
-
-// all handlers
-impl<T> Dialog<T> {
-    pub fn msg_handler(&mut self)->DlgMsg<T>{
-        DlgMsg::new(&mut self.handlers)
-    }
-
-    pub fn btn_handler(&mut self,id:WORD)->BtnMsg<T>{
-        BtnMsg::new(id,&mut self.handlers)   
-    }
-}
-////////////////////////////////////////////////////////////////////
-// handler
-// all structs who want to process the win message need to impl this
-// and then called to put all the closure into Dialog.handlers
-// all message process structs must live as long as MessageLoop
-// all message process structs will be create and call the register function with MessageLoop as param
-// dynamic generated code
-// pub trait HandlerRegister {
-//     fn register(&mut self,&MessageLoop);
-// }
-
-struct HandleKey {
-    msg :WORD,
-    id  :WORD,
-    code:WORD,
-    priority:u16,   //this only use for sorting algorithm ,after that it will be set to zero for search algorithm
-                    //so user can't set priority at runtime
-    //hwnd:HWND,
-}
-
-impl HandleKey {
-    #[inline(always)]
-    fn new_msg(msg:UINT)->HandleKey{
-        HandleKey{
-            msg:msg as WORD,
-            id:0,
-            code:0,
-            priority:0,
-            //hwnd:h,
-        }
-    }
-
-    #[inline(always)]
-    fn new(msg:UINT,id:u16,code:u16)->HandleKey{
-        HandleKey{
-            msg:msg as WORD,
-            id:id,
-            code:code,
-            priority:0,
-            //hwnd:h,
-        }
-    }
-
-    #[inline(always)]
-    pub fn key(&self)->u64{
-        unsafe{
-            *(self as *const _ as *const u64)
-        }
-    }
-}
-
-#[repr(C,packed)]
-pub struct Handler<T> {
-    msg :WORD,
-    id  :WORD,
-    code:WORD,
-    priority:u16,   //this only use for sorting algorithm ,after that it will be set to zero for search algorithm
-                    //so user can't set priority at runtime
-    //hwnd:HWND,
-
-    call:Rc<Fn(&mut Event,&mut T)>,
-}
-
-impl<T> Handler<T> {
-    #[inline(always)]
-    pub fn new<F>(msg:UINT,id:u16,code:u16,priority:u16,f:F)->Handler<T> where F:Fn(&mut Event,&mut T) + 'static {
-        Handler{
-            msg:msg as WORD,
-            id :id,
-            code:code,
-            priority:priority,
-            call:Rc::new(f),
-        }
-    }
-
-    #[inline(always)]
-    fn key(&self)->u64{
-        unsafe{
-            *(self as *const _ as *const u64)
-        }
-    }
-
-    // for sort
-    fn cmp(&self,other:&Self)->Ordering {
-        self.key().cmp(&other.key())
-    }
-}
+//typedef CEditT<ATL::CWindow>   CEdit;
 
 
 /////////////////////////////////////////////////////////
 // expose all cwin methods
 
 // currently racer not support macros,so add all functions manually
-impl<T> Dialog<T> {
+impl Edit {
     #[inline(always)]
     pub fn GetHwnd(&self) -> HWND {
         self.cwin.GetHwnd()
@@ -577,21 +526,6 @@ impl<T> Dialog<T> {
         self.cwin.assert_window()
     }
 
-    #[inline(always)]
-    pub fn GetParent(&self) -> HWND {
-        self.cwin.GetParent()
-    }
-
-    #[inline(always)]
-    pub fn SetParent(&self,hWndNewParent:HWND) -> HWND {
-        self.cwin.SetParent(hWndNewParent)
-    }
-
-    #[inline(always)]
-    pub fn GetDlgItem(&self,nID:c_int) -> HWND {
-        self.cwin.GetDlgItem(nID)
-    }
-    
     #[inline(always)]
     pub fn GetParent2 (&self) -> CWindow {
         self.cwin.GetParent2()

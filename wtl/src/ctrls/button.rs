@@ -4,7 +4,8 @@
 // CButton - client side for a Windows BUTTON control
 use atl::{CWindow,NULL_HWND};
 use winapi::*;
-use user32::*;
+//use user32::*;
+use super::consts::*;
 
 pub struct Button {
     cwin: CWindow,
@@ -28,7 +29,7 @@ delete
 ->void
 const
 (3)
-self.assert_window();
+ATLASSERT(::IsWindow(m_hWnd));
 =>
 self.assert_window();
 
@@ -46,11 +47,6 @@ pub fn \1\(&self,\3: \2\)
 \(LPARAM\)(\w+)
 =>
 \1 as LPARAM
-
-(7) const define
-#define (\w+)\s+(\w+)
-=>
-const \1: UINT = \2;
 */
 impl Button {
 	
@@ -215,40 +211,6 @@ impl Button {
 		self.SendMessage( BM_CLICK, 0, 0);
 	}
 }
-
-//typedef CButtonT<ATL::CWindow>   CButton;
-
-/*
- * Button Control Messages
- */
-const BM_GETCHECK: UINT = 0x00F0;
-const BM_SETCHECK: UINT = 0x00F1;
-const BM_GETSTATE: UINT = 0x00F2;
-const BM_SETSTATE: UINT = 0x00F3;
-const BM_SETSTYLE: UINT = 0x00F4;
-//#if(WINVER >= 0x0400)
-const BM_CLICK: UINT = 0x00F5;
-const BM_GETIMAGE: UINT = 0x00F6;
-const BM_SETIMAGE: UINT = 0x00F7;
-//#endif /* WINVER >= 0x0400 */
-//#if(WINVER >= 0x0600)
-const BM_SETDONTCLICK: UINT = 0x00F8;
-//#endif /* WINVER >= 0x0600 */
-
-//#if(WINVER >= 0x0400)
-const BST_UNCHECKED: UINT = 0x0000;
-const BST_CHECKED: UINT = 0x0001;
-const BST_INDETERMINATE: UINT = 0x0002;
-const BST_PUSHED: UINT = 0x0004;
-const BST_FOCUS: UINT = 0x0008;
-//#endif /* WINVER >= 0x0400 */
-
-const IMAGE_BITMAP: UINT = 0;
-const IMAGE_ICON: UINT = 1;
-const IMAGE_CURSOR: UINT = 2;
-//#if(WINVER >= 0x0400)
-const IMAGE_ENHMETAFILE: UINT = 3;
-
 
 /////////////////////////////////////////////////////////
 // expose all cwin methods

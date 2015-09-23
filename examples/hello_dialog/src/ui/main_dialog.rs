@@ -26,11 +26,11 @@ impl<T> MainDialog<T> {
 		self.about_dialog.this.Create2(h,t);
 		self.about_dialog.this.ShowWindow(SW_SHOW);
 
-		println!("{}", self.this);
+		//println!("{}", self.this);
 		// buttons 
 		// these binders should call in OnInitDialog?
 		let h = self.this.GetDlgItem(101);
-		println!("0x{:x}", h as usize);
+		//println!("0x{:x}", h as usize);
 		self.btn_about.Attach(h);
 	}
 
@@ -41,7 +41,7 @@ impl<T> MainDialog<T> {
 		self.this.msg_handler()
 	}
 
-	pub fn btn_about_handler(&mut self)->BtnMsg<T>{
+	pub fn btn_about_msg(&mut self)->BtnMsg<T>{
 		self.this.btn_handler(101)
 	}
 }

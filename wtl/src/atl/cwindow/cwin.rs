@@ -1471,7 +1471,8 @@ impl CWindow {
 				//ATLENSURE_RETURN_VAL(hMonitor != NULL, FALSE);
                 let mut minfo: MONITORINFO = Default::default();
                 minfo.cbSize = std::mem::size_of::<MONITORINFO>() as DWORD;
-                let bResult: BOOL = user32::GetMonitorInfoW(hMonitor, &mut minfo);
+                //let bResult: BOOL = user32::GetMonitorInfoW(hMonitor, &mut minfo);
+                user32::GetMonitorInfoW(hMonitor, &mut minfo);
 				//ATLENSURE_RETURN_VAL(bResult, FALSE);
 
                 rcArea = minfo.rcWork;

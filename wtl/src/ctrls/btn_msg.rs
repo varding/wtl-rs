@@ -9,14 +9,14 @@
 // https://msdn.microsoft.com/en-us/library/windows/desktop/bb775983(v=vs.85).aspx
 
 use winapi::*;
-use user32;
+//use user32;
 
 //use super::super::cwindow::*;
 //use super::consts::*;
 //use super::Event;
 
 use atl::{Handler,Event};
-use atl::CWindow;
+//use atl::CWindow;
 
 pub struct BtnMsg <'a,T:'a> {
 	id:WORD,
@@ -36,7 +36,7 @@ impl<'a,T> BtnMsg<'a,T> {
 impl<'a,T> BtnMsg<'a,T> {
 	// BN_CLICKED
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb761825(v=vs.85).aspx
-	pub fn on_click<F>(&mut self,priority:u16,f:F) where F:Fn(&Event,&mut T)->LRESULT + 'static {
+	pub fn on_click<F>(&mut self,priority:u16,f:F) where F:Fn(&mut Event,&mut T) + 'static {
         self.h.push(Handler::new(WM_COMMAND, self.id, BN_CLICKED, priority, f));
     }
 }

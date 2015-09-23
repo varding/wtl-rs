@@ -1,4 +1,4 @@
-
+#![allow(dead_code)]
 
 //#[cfg(target_arch = "x86")]
 //use super::stdthunk_x86::imp::Thunk;

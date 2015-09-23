@@ -15,7 +15,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,42,128,50,14
-    CTEXT           "xxx配置工具\n\nv0.2 20130110\n\nxxx公司\n\nhzding@sensorlink.cn\n\n(c) Copyright 2012",IDC_STATIC,25,41,78,77
+    CTEXT           "xxx配置工具\n\nv0.2 20130110\n\nxxx公司\n\nxxx@xxx.cn\n\n(c) Copyright 2012",IDC_STATIC,25,41,78,77
     ICON            IDR_MAINFRAME,IDC_STATIC,55,17,20,20
     GROUPBOX        "",IDC_STATIC,8,7,115,115
 END

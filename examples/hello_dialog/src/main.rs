@@ -1,4 +1,4 @@
-#![feature(custom_attribute, plugin,rc_counts)]
+#![feature(custom_attribute, plugin)]
 #![plugin(trace)]
 
 //the three lines below pass argments to linker to make the programe a win32 gui without a console 
