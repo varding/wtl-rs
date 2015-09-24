@@ -1,0 +1,3 @@
+[submodule "pkg/winapi"]
+	path = pkg/winapi
+	url = https://github.com/varding/winapi-rs
