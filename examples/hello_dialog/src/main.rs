@@ -21,15 +21,15 @@ extern crate shell32;
 mod ui;
 mod main_dlg;
 mod about;
-pub mod bloat;
-mod make_bloat;
-
+// pub mod bloat;
+// mod make_bloat;
+mod wchar;
 
 use ui::DialogHandler;
 
 fn main() {
     
-    make_bloat::make_call();
+    //make_bloat::make_call();
     let mut root = ui::Root::new();
 
     //////////////////////////////////////////////

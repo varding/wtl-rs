@@ -1,4 +1,4 @@
-
+#![allow(dead_code)]
 //use winapi::*;
 use wtl::atl::{Dialog,DlgMsg};
 use wtl::ctrls::{Button,BtnMsg};

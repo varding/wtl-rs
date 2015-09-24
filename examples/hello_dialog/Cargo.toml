@@ -18,9 +18,9 @@ wtl-rs       = {version = "*",path = "../../"}
 
 
 [profile.release]
-opt-level = 3
+#opt-level = 3
 debug = false
 rpath = false
-lto = false
+#lto = false
 debug-assertions = false
 codegen-units = 1

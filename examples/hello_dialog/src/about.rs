@@ -1,9 +1,10 @@
 
-use kernel32;
+//use kernel32;
 use user32;
 use winapi::*;
 use wtl::atl::*;
 
+use super::wchar::ToCU16Str;
 use super::ui;
 
 pub struct AboutDialogHandler;
@@ -30,16 +31,8 @@ impl ui::DialogHandler for AboutDialogHandler {
 
 pub fn show_msg_dlg(h: HWND) {
     let hello = "hello大家好";
-
+    let t = hello.to_c_u16();
     unsafe {
-        let out = [0u16,24];
-        kernel32::MultiByteToWideChar(CP_UTF8,
-                                       0,
-                                       hello as *const str as LPCCH,
-                                       hello.len() as c_int,
-                                       out.as_ptr() as LPWSTR,
-                                       24);
-     //println!("{}", wcsLen);
-        user32::MessageBoxW(h, out.as_ptr() as LPCWSTR, out.as_ptr() as LPCWSTR, 0u32);
+        user32::MessageBoxW(h, t.as_ptr() as LPCWSTR, 0 as LPCWSTR, 0u32);
     }
 }
