@@ -23,6 +23,8 @@ pub struct Dialog<T>{
     state: DWORD, // destroy or not
     modal: bool, // is modal dialog
 
+    // T can't be mut borrowed more than once,so dialog save raw pointer,
+    // when all gui run in one thread this is safe
     root:*mut T, //raw pointer to the Root Dialogs
     //messages
     bin_search_cnt:u32,         //used for combine search,search step cnt for bin search

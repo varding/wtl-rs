@@ -12,6 +12,7 @@ extern crate wtl;
 extern crate winapi;
 extern crate user32;
 extern crate kernel32;
+extern crate shell32;
 // extern crate rand;
 
 // use rand::Rng;
@@ -20,11 +21,15 @@ extern crate kernel32;
 mod ui;
 mod main_dlg;
 mod about;
+pub mod bloat;
+mod make_bloat;
+
 
 use ui::DialogHandler;
 
 fn main() {
     
+    make_bloat::make_call();
     let mut root = ui::Root::new();
 
     //////////////////////////////////////////////

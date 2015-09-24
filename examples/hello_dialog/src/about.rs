@@ -34,11 +34,11 @@ pub fn show_msg_dlg(h: HWND) {
     unsafe {
         let out = [0u16,24];
         kernel32::MultiByteToWideChar(CP_UTF8,
-                                                   0,
-                                                   hello as *const str as LPCCH,
-                                                   hello.len() as c_int,
-                                                   out.as_ptr() as LPWSTR,
-                                                   24);
+                                       0,
+                                       hello as *const str as LPCCH,
+                                       hello.len() as c_int,
+                                       out.as_ptr() as LPWSTR,
+                                       24);
      //println!("{}", wcsLen);
         user32::MessageBoxW(h, out.as_ptr() as LPCWSTR, out.as_ptr() as LPCWSTR, 0u32);
     }
