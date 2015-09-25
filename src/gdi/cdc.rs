@@ -40,20 +40,45 @@ pub fn \1\(&self)
 pub fn (\w+)\s*\((\w+) (\w+)\)
 =>
 pub fn \1\(&self,\3: \2\)
-// two parameter
+// two parameters
 pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+)\)
 =>
 pub fn \1\(&self,\3: \2\, \5: \4)
 
-// three paramter
+// three paramters
 pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\)
 =>
 pub fn \1\(&self,\3: \2\, \5: \4,\7: \6)
 
-//four parameter
+//four parameters
 pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\s*\)
 =>
 pub fn \1\(&self,\3: \2\, \5: \4,\7: \6,\9: \8)
+
+//five parameters
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\s*\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4, \7: \6, \9: \8, $11: $10\)
+
+//6
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\s*\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4, \7: \6, \9: \8, $11: $10, $13: $12\)
+
+//7
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\s*\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4, \7: \6, \9: \8, $11: $10, $13: $12\)
+
+//8
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\s*\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4, \7: \6, \9: \8, $11: $10, $13: $12, $15: $14\)
+
+//9 parameters
+pub fn (\w+)\s*\((\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+), (\w+) (\w+)\s*\)
+=>
+pub fn \1\(&self,\3: \2\, \5: \4, \7: \6, \9: \8, $11: $10, $13: $12, $15: $14, $17: $16\)
 
 (6) coercion
 \(LPARAM\)(\w+)
@@ -306,7 +331,7 @@ impl cdc_inner{
 //#else
 //		debug_assert!(nPen == WHITE_PEN || nPen == BLACK_PEN || nPen == NULL_PEN);
 //#endif // !(_WIN32_WINNT >= 0x0500)
-		return SelectPen(::GetStockObject(nPen) as HPEN);
+		self.SelectPen(::GetStockObject(nPen) as HPEN)
 	}
 
 	pub fn SelectStockBrush(&self,nBrush: c_int)->HBRUSH {
@@ -315,7 +340,7 @@ impl cdc_inner{
 //#else
 //		debug_assert!(nBrush >= WHITE_BRUSH && nBrush <= HOLLOW_BRUSH);
 //#endif // !(_WIN32_WINNT >= 0x0500)
-		return SelectBrush(::GetStockObject(nBrush) as HBRUSH);
+		self.SelectBrush(::GetStockObject(nBrush) as HBRUSH)
 	}
 
 	pub fn SelectStockFont(&self,nFont: c_int)->HFONT {
@@ -324,12 +349,12 @@ impl cdc_inner{
 //#else // CE specific
 //		debug_assert!(nFont == SYSTEM_FONT);
 //#endif // _WIN32_WCE
-		return SelectFont(::GetStockObject(nFont) as HFONT);
+		self.SelectFont(::GetStockObject(nFont) as HFONT)
 	}
 
 	pub fn SelectStockPalette(&self,nPalette: c_int, bForceBackground: BOOL)->HPALETTE {
 		debug_assert!(nPalette == DEFAULT_PALETTE); // the only one supported
-		return SelectPalette(::GetStockObject(nPalette) as HPALETTE, bForceBackground);
+		self.SelectPalette(::GetStockObject(nPalette) as HPALETTE, bForceBackground)
 	}
 
 // Color and Color Palette Functions
@@ -484,9 +509,9 @@ impl cdc_inner{
 		return SetViewportExt(size.cx, size.cy, lpSizeRet);
 	}
 
-	pub fn ScaleViewportExt (c_int xNum, c_int xDenom, c_int yNum, c_int yDenom, LPSIZE lpSize )->BOOL {
+	pub fn ScaleViewportExt (&self,xNum: c_int, xDenom: c_int, yNum: c_int, yDenom: c_int, lpSize: LPSIZE) -> BOOL {
 		self.assert_dc();
-		return ::ScaleViewportExtEx(self.hdc, xNum, xDenom, yNum, yDenom, lpSize);
+		::ScaleViewportExtEx(self.hdc, xNum, xDenom, yNum, yDenom, lpSize)
 	}
 //#endif // !_WIN32_WCE
 
@@ -528,100 +553,105 @@ impl cdc_inner{
 		return SetWindowExt(size.cx, size.cy, lpSizeRet);
 	}
 
-	pub fn ScaleWindowExt (c_int xNum, c_int xDenom, c_int yNum, c_int yDenom, LPSIZE lpSize )->BOOL {
+	pub fn ScaleWindowExt(&self,xNum: c_int, xDenom: c_int, yNum: c_int, yDenom: c_int, lpSize: LPSIZE)->BOOL {
 		self.assert_dc();
 		return ::ScaleWindowExtEx(self.hdc, xNum, xDenom, yNum, yDenom, lpSize);
 	}
 
 // Coordinate Functions
-	pub fn DPtoLP (LPPOINT lpPoints, c_int nCount = 1)->BOOL {
+	pub fn DPtoLP(&self,lpPoints: LPPOINT, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::DPtoLP(self.hdc, lpPoints, nCount);
 	}
 
 	pub fn DPtoLP(&self,lpRect: LPRECT)->BOOL {
 		self.assert_dc();
-		return ::DPtoLP(self.hdc, (LPPOINT)lpRect, 2);
+		return ::DPtoLP(self.hdc, lpRect as LPPOINT, 2);
 	}
 
-	pub fn DPtoLP(&self,lpSize: LPSIZE)->BOOL {
-		SIZE sizeWinExt = { 0, 0 };
-		if(!GetWindowExt(&sizeWinExt))
+	pub fn DPtoLP(&self,lpSize: &mut SIZE)->BOOL {
+		let mut sizeWinExt = SIZE{cx: 0, cy :0};
+		if GetWindowExt(&mut sizeWinExt) == FALSE {
 			return FALSE;
-		SIZE sizeVpExt = { 0, 0 };
-		if(!GetViewportExt(&sizeVpExt))
+		}
+
+		let mut sizeVpExt = SIZE{cx: 0, cy: 0};
+		if GetViewportExt(&mut sizeVpExt) == FALSE {
 			return FALSE;
-		lpSize->cx = ::MulDiv(lpSize->cx, abs(sizeWinExt.cx), abs(sizeVpExt.cx));
-		lpSize->cy = ::MulDiv(lpSize->cy, abs(sizeWinExt.cy), abs(sizeVpExt.cy));
+		}
+		lpSize.cx = ::MulDiv(lpSize.cx, abs(sizeWinExt.cx), abs(sizeVpExt.cx));
+		lpSize.cy = ::MulDiv(lpSize.cy, abs(sizeWinExt.cy), abs(sizeVpExt.cy));
 		return TRUE;
 	}
 
-	pub fn LPtoDP (LPPOINT lpPoints, c_int nCount = 1)->BOOL {
+	pub fn LPtoDP(&self,lpPoints: LPPOINT, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::LPtoDP(self.hdc, lpPoints, nCount);
 	}
 
 	pub fn LPtoDP(&self,lpRect: LPRECT)->BOOL {
 		self.assert_dc();
-		return ::LPtoDP(self.hdc, (LPPOINT)lpRect, 2);
+		return ::LPtoDP(self.hdc, lpRect as LPPOINT, 2);
 	}
 
-	pub fn LPtoDP(&self,lpSize: LPSIZE)->BOOL {
-		SIZE sizeWinExt = { 0, 0 };
-		if(!GetWindowExt(&sizeWinExt))
+	pub fn LPtoDP(&self,lpSize: &mut SIZE)->BOOL {
+		let mut sizeWinExt = SIZE{cx: 0, cy: 0};
+		if GetWindowExt(&mut sizeWinExt) == FALSE{
 			return FALSE;
-		SIZE sizeVpExt = { 0, 0 };
-		if(!GetViewportExt(&sizeVpExt))
+		}
+		let mut sizeVpExt = SIZE{cx: 0, cy: 0};
+		if GetViewportExt(&mut sizeVpExt) == FALSE{
 			return FALSE;
-		lpSize->cx = ::MulDiv(lpSize->cx, abs(sizeVpExt.cx), abs(sizeWinExt.cx));
-		lpSize->cy = ::MulDiv(lpSize->cy, abs(sizeVpExt.cy), abs(sizeWinExt.cy));
+		}
+
+		lpSize.cx = ::MulDiv(lpSize.cx, abs(sizeVpExt.cx), abs(sizeWinExt.cx));
+		lpSize.cy = ::MulDiv(lpSize.cy, abs(sizeVpExt.cy), abs(sizeWinExt.cy));
 		return TRUE;
 	}
 
 // Special Coordinate Functions (useful for dealing with metafiles and OLE)
-	#define HIMETRIC_INCH   2540    // HIMETRIC units per inch
+	//#define HIMETRIC_INCH   2540    // HIMETRIC units per inch
+	const HIMETRIC_INCH: c_int = 2540;
+	// pub fn DPtoHIMETRIC(&self,lpSize: LPSIZE) {
+	// 	self.assert_dc();
+	// 	let mut nMapMode:c_int = self.GetMapMode();
+	// 	if nMapMode < MM_ISOTROPIC && nMapMode != MM_TEXT {
+	// 		// when using a constrained map mode, map against physical inch
+	// 		((CDCHandle*)this)->SetMapMode(MM_HIMETRIC);
+	// 		DPtoLP(lpSize);
+	// 		((CDCHandle*)this)->SetMapMode(nMapMode);
+	// 	}
+	// 	else
+	// 	{
+	// 		// map against logical inch for non-constrained mapping modes
+	// 		c_int cxPerInch = GetDeviceCaps(LOGPIXELSX);
+	// 		c_int cyPerInch = GetDeviceCaps(LOGPIXELSY);
+	// 		debug_assert!(cxPerInch != 0 && cyPerInch != 0);
+	// 		lpSize->cx = ::MulDiv(lpSize->cx, HIMETRIC_INCH, cxPerInch);
+	// 		lpSize->cy = ::MulDiv(lpSize->cy, HIMETRIC_INCH, cyPerInch);
+	// 	}
+	// }
 
-	pub fn DPtoHIMETRIC(&self,lpSize: LPSIZE) {
-		self.assert_dc();
-		c_int nMapMode;
-		if((nMapMode = GetMapMode()) < MM_ISOTROPIC && nMapMode != MM_TEXT)
-		{
-			// when using a constrained map mode, map against physical inch
-			((CDCHandle*)this)->SetMapMode(MM_HIMETRIC);
-			DPtoLP(lpSize);
-			((CDCHandle*)this)->SetMapMode(nMapMode);
-		}
-		else
-		{
-			// map against logical inch for non-constrained mapping modes
-			c_int cxPerInch = GetDeviceCaps(LOGPIXELSX);
-			c_int cyPerInch = GetDeviceCaps(LOGPIXELSY);
-			debug_assert!(cxPerInch != 0 && cyPerInch != 0);
-			lpSize->cx = ::MulDiv(lpSize->cx, HIMETRIC_INCH, cxPerInch);
-			lpSize->cy = ::MulDiv(lpSize->cy, HIMETRIC_INCH, cyPerInch);
-		}
-	}
-
-	pub fn HIMETRICtoDP(&self,lpSize: LPSIZE) {
-		self.assert_dc();
-		c_int nMapMode;
-		if((nMapMode = GetMapMode()) < MM_ISOTROPIC && nMapMode != MM_TEXT)
-		{
-			// when using a constrained map mode, map against physical inch
-			((CDCHandle*)this)->SetMapMode(MM_HIMETRIC);
-			LPtoDP(lpSize);
-			((CDCHandle*)this)->SetMapMode(nMapMode);
-		}
-		else
-		{
-			// map against logical inch for non-constrained mapping modes
-			c_int cxPerInch = GetDeviceCaps(LOGPIXELSX);
-			c_int cyPerInch = GetDeviceCaps(LOGPIXELSY);
-			debug_assert!(cxPerInch != 0 && cyPerInch != 0);
-			lpSize->cx = ::MulDiv(lpSize->cx, cxPerInch, HIMETRIC_INCH);
-			lpSize->cy = ::MulDiv(lpSize->cy, cyPerInch, HIMETRIC_INCH);
-		}
-	}
+	// pub fn HIMETRICtoDP(&self,lpSize: LPSIZE) {
+	// 	self.assert_dc();
+	// 	c_int nMapMode;
+	// 	if((nMapMode = GetMapMode()) < MM_ISOTROPIC && nMapMode != MM_TEXT)
+	// 	{
+	// 		// when using a constrained map mode, map against physical inch
+	// 		((CDCHandle*)this)->SetMapMode(MM_HIMETRIC);
+	// 		LPtoDP(lpSize);
+	// 		((CDCHandle*)this)->SetMapMode(nMapMode);
+	// 	}
+	// 	else
+	// 	{
+	// 		// map against logical inch for non-constrained mapping modes
+	// 		c_int cxPerInch = GetDeviceCaps(LOGPIXELSX);
+	// 		c_int cyPerInch = GetDeviceCaps(LOGPIXELSY);
+	// 		debug_assert!(cxPerInch != 0 && cyPerInch != 0);
+	// 		lpSize->cx = ::MulDiv(lpSize->cx, cxPerInch, HIMETRIC_INCH);
+	// 		lpSize->cy = ::MulDiv(lpSize->cy, cyPerInch, HIMETRIC_INCH);
+	// 	}
+	// }
 
 	pub fn LPtoHIMETRIC(&self,lpSize: LPSIZE) {
 		LPtoDP(lpSize);
@@ -663,14 +693,16 @@ impl cdc_inner{
 		return ::GetClipBox(self.hdc, lpRect);
 	}
 
-	pub fn GetClipRgn (CRgn& region)->c_int {
+	pub fn GetClipRgn (&self,region: &mut CRgn)->c_int {
 		self.assert_dc();
-		if(region.IsNull())
+		if region.IsNull() {
 			region.CreateRectRgn(0, 0, 0, 0);
+		}
 
-		c_int nRet = ::GetClipRgn(self.hdc, region);
-		if(nRet != 1)
+		let nRet = ::GetClipRgn(self.hdc, region) as c_int;
+		if nRet != 1{
 			region.DeleteObject();
+		}
 
 		return nRet;
 	}
@@ -694,7 +726,7 @@ impl cdc_inner{
 
 	pub fn SelectClipRgn(&self,hRgn: HRGN)->c_int {
 		self.assert_dc();
-		return ::SelectClipRgn(self.hdc, (HRGN)hRgn);
+		return ::SelectClipRgn(self.hdc, hRgn as HRGN);
 	}
 
 	pub fn ExcludeClipRect(&self,x1: c_int, y1: c_int,x2: c_int,y2: c_int)->c_int {
@@ -702,9 +734,9 @@ impl cdc_inner{
 		return ::ExcludeClipRect(self.hdc, x1, y1, x2, y2);
 	}
 
-	pub fn ExcludeClipRect(&self,lpRect: LPCRECT)->c_int {
+	pub fn ExcludeClipRect(&self,lpRect: &RECT)->c_int {
 		self.assert_dc();
-		return ::ExcludeClipRect(self.hdc, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom);
+		return ::ExcludeClipRect(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom);
 	}
 
 //#ifndef _WIN32_WCE
@@ -719,9 +751,9 @@ impl cdc_inner{
 		return ::IntersectClipRect(self.hdc, x1, y1, x2, y2);
 	}
 
-	pub fn IntersectClipRect(&self,lpRect: LPCRECT)->c_int {
+	pub fn IntersectClipRect(&self,lpRect: &RECT)->c_int {
 		self.assert_dc();
-		return ::IntersectClipRect(self.hdc, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom);
+		return ::IntersectClipRect(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom);
 	}
 
 //#ifndef _WIN32_WCE
@@ -770,39 +802,39 @@ impl cdc_inner{
 //#endif // !defined(_WIN32_WCE) || (_WIN32_WCE >= 400)
 
 //#ifndef _WIN32_WCE
-	pub fn Arc (c_int x1, c_int y1, c_int x2, c_int y2, c_int x3, c_int y3, c_int x4, c_int y4)->BOOL {
+	pub fn Arc (&self,x1: c_int, y1: c_int, x2: c_int, y2: c_int, x3: c_int, y3: c_int, x4: c_int, y4: c_int)->BOOL {
 		self.assert_dc();
 		return ::Arc(self.hdc, x1, y1, x2, y2, x3, y3, x4, y4);
 	}
 
 	pub fn Arc(&self,lpRect: LPCRECT, ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		return ::Arc(self.hdc, lpRect->left, lpRect->top,
-			lpRect->right, lpRect->bottom, ptStart.x, ptStart.y,
+		return ::Arc(self.hdc, lpRect.left, lpRect.top,
+			lpRect.right, lpRect.bottom, ptStart.x, ptStart.y,
 			ptEnd.x, ptEnd.y);
 	}
 //#endif // !_WIN32_WCE
 
-	pub fn Polyline (const POINT* lpPoints, c_int nCount)->BOOL {
+	pub fn Polyline (&self, lpPoints: &POINT, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::Polyline(self.hdc, lpPoints, nCount);
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn AngleArc (c_int x, c_int y, c_int nRadius, float fStartAngle, float fSweepAngle)->BOOL {
+	pub fn AngleArc(&self,x: c_int, y: c_int, nRadius: c_int, fStartAngle: float, fSweepAngle: float)->BOOL {
 		self.assert_dc();
 		return ::AngleArc(self.hdc, x, y, nRadius, fStartAngle, fSweepAngle);
 	}
 
-	pub fn ArcTo (c_int x1, c_int y1, c_int x2, c_int y2, c_int x3, c_int y3, c_int x4, c_int y4)->BOOL {
+	pub fn ArcTo (&self,x1: c_int, y1: c_int, x2: c_int, y2: c_int, x3: c_int, y3: c_int, x4: c_int, y4: c_int)->BOOL {
 		self.assert_dc();
 		return ::ArcTo(self.hdc, x1, y1, x2, y2, x3, y3, x4, y4);
 	}
 
 	pub fn ArcTo(&self,lpRect: LPCRECT, ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		return ArcTo(lpRect->left, lpRect->top, lpRect->right,
-		lpRect->bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y);
+		return ArcTo(lpRect.left, lpRect.top, lpRect.right,
+		lpRect.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y);
 	}
 
 	pub fn GetArcDirection(&self)->c_int {
@@ -815,29 +847,27 @@ impl cdc_inner{
 		return ::SetArcDirection(self.hdc, nArcDirection);
 	}
 
-	pub fn PolyDraw (const POINT* lpPoints, const BYTE* lpTypes, c_int nCount)->BOOL {
+	pub fn PolyDraw (&self, lpPoints: &POINT, lpTypes: &BYTE, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::PolyDraw(self.hdc, lpPoints, lpTypes, nCount);
 	}
 
-	pub fn PolylineTo (const POINT* lpPoints, c_int nCount)->BOOL {
+	pub fn PolylineTo(&self,lpPoints: POINT, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::PolylineTo(self.hdc, lpPoints, nCount);
 	}
 
-	BOOL PolyPolyline(const POINT* lpPoints,
-		const DWORD* lpPolyPoints, c_int nCount)
-	{
+	pub fn PolyPolyline(&self,lpPoints: &POINT, lpPolyPoints: &DWORD , nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::PolyPolyline(self.hdc, lpPoints, lpPolyPoints, nCount);
 	}
 
-	pub fn PolyBezier (const POINT* lpPoints, c_int nCount)->BOOL {
+	pub fn PolyBezier(&self,lpPoints: &POINT, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::PolyBezier(self.hdc, lpPoints, nCount);
 	}
 
-	pub fn PolyBezierTo (const POINT* lpPoints, c_int nCount)->BOOL {
+	pub fn PolyBezierTo(&self,lpPoints: &POINT, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::PolyBezierTo(self.hdc, lpPoints, nCount);
 	}
@@ -852,7 +882,7 @@ impl cdc_inner{
 	pub fn FillRect(&self,lpRect: LPCRECT, nColorIndex: c_int)->BOOL {
 		self.assert_dc();
 //#ifndef _WIN32_WCE
-		return ::FillRect(self.hdc, lpRect, (HBRUSH)LongToPtr(nColorIndex + 1));
+		return ::FillRect(self.hdc, lpRect, LongToPtr(nColorIndex + 1) as HBRUSH);
 //#else // CE specific
 //		return ::FillRect(self.hdc, lpRect, ::GetSysColorBrush(nColorIndex));
 //#endif // _WIN32_WCE
@@ -890,33 +920,38 @@ impl cdc_inner{
 //#endif // _WIN32_WCE
 	}
 
-	pub fn DrawIconEx (c_int x, c_int y, HICON hIcon, c_int cxWidth, c_int cyWidth, UINT uStepIfAniCur = 0, HBRUSH hbrFlickerFreeDraw , UINT uFlags = DI_NORMAL)->BOOL {
+	pub fn DrawIconEx (&self,x: c_int, y: c_int, hIcon: HICON, cxWidth: c_int, cyWidth: c_int, uStepIfAniCur: UINT, hbrFlickerFreeDraw: HBRUSH, uFlags: UINT)->BOOL {
 		self.assert_dc();
 		return ::DrawIconEx(self.hdc, x, y, hIcon, cxWidth, cyWidth, uStepIfAniCur, hbrFlickerFreeDraw, uFlags);
 	}
 
-	pub fn DrawIconEx (POINT point, HICON hIcon, SIZE size, UINT uStepIfAniCur = 0, HBRUSH hbrFlickerFreeDraw , UINT uFlags = DI_NORMAL)->BOOL {
-		self.assert_dc();
-		return ::DrawIconEx(self.hdc, point.x, point.y, hIcon, size.cx, size.cy, uStepIfAniCur, hbrFlickerFreeDraw, uFlags);
-	}
+	// pub fn DrawIconEx (POINT point, HICON hIcon, SIZE size, UINT uStepIfAniCur = 0, HBRUSH hbrFlickerFreeDraw , UINT uFlags = DI_NORMAL)->BOOL {
+	// 	self.assert_dc();
+	// 	return ::DrawIconEx(self.hdc, point.x, point.y, hIcon, size.cx, size.cy, uStepIfAniCur, hbrFlickerFreeDraw, uFlags);
+	// }
 
 //#ifndef _WIN32_WCE
-	pub fn DrawState (POINT pt, SIZE size, HBITMAP hBitmap, UINT nFlags, HBRUSH hBrush )->BOOL {
+	pub fn DrawState(&self,pt: POINT, size: SIZE, hBitmap: HBITMAP, nFlags: UINT, hBrush: HBRUSH)->BOOL {
 		self.assert_dc();
 		return ::DrawState(self.hdc, hBrush, NULL, hBitmap as LPARAM, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_BITMAP);
 	}
 
-	pub fn DrawState (POINT pt, SIZE size, HICON hIcon, UINT nFlags, HBRUSH hBrush )->BOOL {
+	pub fn DrawState(&self,pt: POINT, size: SIZE, hIcon: HICON, nFlags: UINT, hBrush: HBRUSH)->BOOL {
 		self.assert_dc();
 		return ::DrawState(self.hdc, hBrush, NULL, hIcon as LPARAM, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_ICON);
 	}
 
-	pub fn DrawState (POINT pt, SIZE size, LPCTSTR lpszText, UINT nFlags, BOOL bPrefixText = TRUE, c_int nTextLen = 0, HBRUSH hBrush )->BOOL {
+	pub fn DrawState(&self,pt: POINT, size: SIZE, lpszText: LPCTSTR, nFlags: UINT, bPrefixText: BOOL, nTextLen: c_int)->BOOL {
 		self.assert_dc();
-		return ::DrawState(self.hdc, hBrush, NULL, lpszText as LPARAM, nTextLen as WPARAM, pt.x, pt.y, size.cx, size.cy, nFlags | (bPrefixText ? DST_PREFIXTEXT : DST_TEXT));
+		let f = nFlags | if bPrefixText == TRUE{
+			DST_PREFIXTEXT
+		}else{
+			DST_TEXT
+		};
+		return ::DrawState(self.hdc, hBrush, NULL, lpszText as LPARAM, nTextLen as WPARAM, pt.x, pt.y, size.cx, size.cy, f);
 	}
 
-	pub fn DrawState (POINT pt, SIZE size, DRAWSTATEPROC lpDrawProc, LPARAM lData, UINT nFlags, HBRUSH hBrush )->BOOL {
+	pub fn DrawState(&self,pt: POINT, size: SIZE, lpDrawProc: DRAWSTATEPROC, lData: LPARAM, nFlags: UINT, hBrush: HBRUSH)->BOOL {
 		self.assert_dc();
 		return ::DrawState(self.hdc, hBrush, lpDrawProc, lData, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_COMPLEX);
 	}
@@ -924,14 +959,14 @@ impl cdc_inner{
 
 // Ellipse and Polygon Functions
 //#ifndef _WIN32_WCE
-	pub fn Chord (c_int x1, c_int y1, c_int x2, c_int y2, c_int x3, c_int y3, c_int x4, c_int y4)->BOOL {
+	pub fn Chord(&self,x1: c_int, y1: c_int, x2: c_int, y2: c_int, x3: c_int, y3: c_int, x4: c_int)->BOOL {
 		self.assert_dc();
 		return ::Chord(self.hdc, x1, y1, x2, y2, x3, y3, x4, y4);
 	}
 
 	pub fn Chord(&self,lpRect: LPCRECT, ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		return ::Chord(self.hdc, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y);
+		return ::Chord(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y);
 	}
 //#endif // !_WIN32_WCE
 
@@ -947,28 +982,28 @@ impl cdc_inner{
 
 	pub fn Ellipse(&self,lpRect: LPCRECT)->BOOL {
 		self.assert_dc();
-		return ::Ellipse(self.hdc, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom);
+		return ::Ellipse(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom);
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn Pie (c_int x1, c_int y1, c_int x2, c_int y2, c_int x3, c_int y3, c_int x4, c_int y4)->BOOL {
+	pub fn Pie(&self,x1: c_int, y1: c_int, x2: c_int, y2: c_int, x3: c_int, y3: c_int, x4: c_int)->BOOL {
 		self.assert_dc();
 		return ::Pie(self.hdc, x1, y1, x2, y2, x3, y3, x4, y4);
 	}
 
 	pub fn Pie(&self,lpRect: LPCRECT, ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		return ::Pie(self.hdc, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y);
+		return ::Pie(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y);
 	}
 //#endif // !_WIN32_WCE
 
-	pub fn Polygon (const POINT* lpPoints, c_int nCount)->BOOL {
+	pub fn Polygon(&self,lpPoints: POINT, nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::Polygon(self.hdc, lpPoints, nCount);
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn PolyPolygon (const POINT* lpPoints, const INT* lpPolyCounts, c_int nCount)->BOOL {
+	pub fn PolyPolygon(&self,lpPoints: POINT, lpPolyCounts: INT,nCount: c_int)->BOOL {
 		self.assert_dc();
 		return ::PolyPolygon(self.hdc, lpPoints, lpPolyCounts, nCount);
 	}
@@ -981,33 +1016,31 @@ impl cdc_inner{
 
 	pub fn Rectangle(&self,lpRect: LPCRECT)->BOOL {
 		self.assert_dc();
-		return ::Rectangle(self.hdc, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom);
+		return ::Rectangle(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom);
 	}
 
-	pub fn RoundRect (c_int x1, c_int y1, c_int x2, c_int y2, c_int x3, c_int y3)->BOOL {
+	pub fn RoundRect(&self,x1: c_int, y1: c_int, x2: c_int, y2: c_int, x3: c_int, y3: c_int)->BOOL {
 		self.assert_dc();
 		return ::RoundRect(self.hdc, x1, y1, x2, y2, x3, y3);
 	}
 
 	pub fn RoundRect(&self,lpRect: LPCRECT, point: POINT)->BOOL {
 		self.assert_dc();
-		return ::RoundRect(self.hdc, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom, point.x, point.y);
+		return ::RoundRect(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom, point.x, point.y);
 	}
 
 // Bitmap Functions
-	pub fn PatBlt (c_int x, c_int y, c_int nWidth, c_int nHeight, DWORD dwRop)->BOOL {
+	pub fn PatBlt(&self,x: c_int, y: c_int, nWidth: c_int, nHeight: c_int, dwRop: DWORD)->BOOL {
 		self.assert_dc();
 		return ::PatBlt(self.hdc, x, y, nWidth, nHeight, dwRop);
 	}
 
-	BOOL BitBlt(c_int x, c_int y, c_int nWidth, c_int nHeight, HDC hSrcDC,
-		c_int xSrc, c_int ySrc, DWORD dwRop)
-	{
+	pub fn BitBlt(&self,x: c_int, y: c_int, nWidth: c_int, nHeight: c_int, hSrcDC: HDC, xSrc: c_int, ySrc: c_int)->BOOL{
 		self.assert_dc();
 		return ::BitBlt(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, dwRop);
 	}
 
-	pub fn StretchBlt (c_int x, c_int y, c_int nWidth, c_int nHeight, HDC hSrcDC, c_int xSrc, c_int ySrc, c_int nSrcWidth, c_int nSrcHeight, DWORD dwRop)->BOOL {
+	pub fn StretchBlt(&self,x: c_int, y: c_int, nWidth: c_int, nHeight: c_int, hSrcDC: HDC, xSrc: c_int, ySrc: c_int, nSrcHeight: c_int, dwRop: DWORD)->BOOL {
 		self.assert_dc();
 		return ::StretchBlt(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, nSrcWidth, nSrcHeight, dwRop);
 	}
@@ -1044,13 +1077,13 @@ impl cdc_inner{
 	}
 //#endif // !_WIN32_WCE
 
-	pub fn MaskBlt (c_int x, c_int y, c_int nWidth, c_int nHeight, HDC hSrcDC, c_int xSrc, c_int ySrc, HBITMAP hMaskBitmap, c_int xMask, c_int yMask, DWORD dwRop)->BOOL {
+	pub fn MaskBlt(&self,x: c_int, y: c_int, nWidth: c_int, nHeight: c_int, hSrcDC: HDC, xSrc: c_int, ySrc: c_int, xMask: c_int, yMask: c_int, dwRop: DWORD)->BOOL {
 		self.assert_dc();
 		return ::MaskBlt(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, hMaskBitmap, xMask, yMask, dwRop);
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn PlgBlt (LPPOINT lpPoint, HDC hSrcDC, c_int xSrc, c_int ySrc, c_int nWidth, c_int nHeight, HBITMAP hMaskBitmap, c_int xMask, c_int yMask)->BOOL {
+	pub fn PlgBlt(&self,lpPoint: LPPOINT, hSrcDC: HDC, xSrc: c_int, ySrc: c_int, nWidth: c_int, nHeight: c_int, hMaskBitmap: HBITMAP, xMask: c_int)->BOOL {
 		self.assert_dc();
 		return ::PlgBlt(self.hdc, lpPoint, hSrcDC, xSrc, ySrc, nWidth, nHeight, hMaskBitmap, xMask, yMask);
 	}
@@ -1232,7 +1265,7 @@ impl cdc_inner{
 
 // Text Functions
 //#ifndef _WIN32_WCE
-	pub fn TextOut (c_int x, c_int y, LPCTSTR lpszString, c_int nCount = -1)->BOOL {
+	pub fn TextOut (c_int x, c_int y, LPCTSTR lpszString, c_int nCount)->BOOL {
 		self.assert_dc();
 		if(nCount == -1)
 			nCount = lstrlen(lpszString);
@@ -1240,7 +1273,7 @@ impl cdc_inner{
 	}
 //#endif // !_WIN32_WCE
 
-	pub fn ExtTextOut (c_int x, c_int y, UINT nOptions, LPCRECT lpRect, LPCTSTR lpszString, UINT nCount = -1, LPINT lpDxWidths )->BOOL {
+	pub fn ExtTextOut (c_int x, c_int y, UINT nOptions, LPCRECT lpRect, LPCTSTR lpszString, UINT nCount, LPINT lpDxWidths)->BOOL {
 		self.assert_dc();
 		if(nCount == -1)
 			nCount = lstrlen(lpszString);
@@ -1248,7 +1281,7 @@ impl cdc_inner{
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn TabbedTextOut (c_int x, c_int y, LPCTSTR lpszString, c_int nCount = -1, c_int nTabPositions = 0, LPINT lpnTabStopPositions , c_int nTabOrigin = 0)->SIZE {
+	pub fn TabbedTextOut (c_int x, c_int y, LPCTSTR lpszString, c_int nCount, c_int nTabPositions, LPINT lpnTabStopPositions , c_int nTabOrigin)->SIZE {
 		self.assert_dc();
 		if(nCount == -1)
 			nCount = lstrlen(lpszString);
@@ -1272,14 +1305,14 @@ impl cdc_inner{
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn DrawTextEx (LPTSTR lpstrText, c_int cchText, LPRECT lpRect, UINT uFormat, LPDRAWTEXTPARAMS lpDTParams )->c_int {
+	pub fn DrawTextEx(&self,lpstrText: LPTSTR, cchText: c_int, lpRect: LPRECT, uFormat: UINT, lpDTParams: LPDRAWTEXTPARAMS)->c_int {
 		self.assert_dc();
 		return ::DrawTextEx(self.hdc, lpstrText, cchText, lpRect, uFormat, lpDTParams);
 	}
 //#endif // !_WIN32_WCE
 
 //#if (_WIN32_WINNT >= 0x0501)
-	pub fn DrawShadowText (LPCWSTR lpstrText, c_int cchText, LPRECT lpRect, DWORD dwFlags, COLORREF clrText, COLORREF clrShadow, c_int xOffset, c_int yOffset)->c_int {
+	pub fn DrawShadowText(&self,lpstrText: LPCWSTR, cchText: c_int, lpRect: LPRECT, dwFlags: DWORD, clrText: COLORREF, clrShadow: COLORREF, xOffset: c_int)->c_int {
 		self.assert_dc();
 		// This function is present only if comctl32.dll version 6 is loaded;
 		// we use LoadLibrary/GetProcAddress to allow apps compiled with
@@ -1313,7 +1346,7 @@ impl cdc_inner{
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn GetTabbedTextExtent (LPCTSTR lpszString, c_int nCount = -1, c_int nTabPositions = 0, LPINT lpnTabStopPositions )->DWORD {
+	pub fn GetTabbedTextExtent (LPCTSTR lpszString, c_int nCount, c_int nTabPositions, LPINT lpnTabStopPositions )->DWORD {
 		self.assert_dc();
 		if(nCount == -1)
 			nCount = lstrlen(lpszString);
@@ -1424,7 +1457,7 @@ impl cdc_inner{
 	}
 
 // Scrolling Functions
-	pub fn ScrollDC (c_int dx, c_int dy, LPCRECT lpRectScroll, LPCRECT lpRectClip, HRGN hRgnUpdate, LPRECT lpRectUpdate)->BOOL {
+	pub fn ScrollDC(&self,dx: c_int, dy: c_int, lpRectScroll: LPCRECT, lpRectClip: LPCRECT, hRgnUpdate: HRGN, lpRectUpdate: LPRECT)->BOOL {
 		self.assert_dc();
 		return ::ScrollDC(self.hdc, dx, dy, lpRectScroll, lpRectClip, hRgnUpdate, lpRectUpdate);
 	}
@@ -1824,7 +1857,7 @@ impl cdc_inner{
 		}
 	}
 
-	pub fn FillSolidRect (c_int x, c_int y, c_int cx, c_int cy, COLORREF clr) {
+	pub fn FillSolidRect(&self,x: c_int, y: c_int, cx: c_int, cy: c_int, clr: COLORREF) {
 		self.assert_dc();
 
 		RECT rect = { x, y, x + cx, y + cy };
@@ -1832,11 +1865,11 @@ impl cdc_inner{
 	}
 
 	pub fn Draw3dRect(&self,lpRect: LPCRECT, clrTopLeft: COLORREF,clrBottomRight: COLORREF) {
-		Draw3dRect(lpRect->left, lpRect->top, lpRect->right - lpRect->left,
-			lpRect->bottom - lpRect->top, clrTopLeft, clrBottomRight);
+		Draw3dRect(lpRect.left, lpRect.top, lpRect.right - lpRect.left,
+			lpRect.bottom - lpRect.top, clrTopLeft, clrBottomRight);
 	}
 
-	pub fn Draw3dRect (c_int x, c_int y, c_int cx, c_int cy, COLORREF clrTopLeft, COLORREF clrBottomRight) {
+	pub fn Draw3dRect(&self,x: c_int, y: c_int, cx: c_int, cy: c_int, clrTopLeft: COLORREF, clrBottomRight: COLORREF) {
 		FillSolidRect(x, y, cx - 1, 1, clrTopLeft);
 		FillSolidRect(x, y, 1, cy - 1, clrTopLeft);
 		FillSolidRect(x + cx, y, -1, cy, clrBottomRight);
@@ -1915,7 +1948,7 @@ impl cdc_inner{
 		return ::wglUseFontBitmaps(self.hdc, dwFirst, dwCount, listBase);
 	}
 
-	pub fn wglUseFontOutlines (DWORD dwFirst, DWORD dwCount, DWORD listBase, FLOAT deviation, FLOAT extrusion, c_int format, LPGLYPHMETRICSFLOAT lpgmf)->BOOL {
+	pub fn wglUseFontOutlines(&self,dwFirst: DWORD, dwCount: DWORD, listBase: DWORD, deviation: FLOAT, extrusion: FLOAT, format: c_int)->BOOL {
 		self.assert_dc();
 		return ::wglUseFontOutlines(self.hdc, dwFirst, dwCount, listBase, deviation, extrusion, format, lpgmf);
 	}
@@ -1985,7 +2018,7 @@ impl cdc_inner{
 		return ::GetTextExtentPointI(self.hdc, pgiIn, cgi, lpSize);
 	}
 
-	pub fn GetTextExtentExPointI (LPWORD pgiIn, c_int cgi, c_int nMaxExtent, LPINT lpnFit, LPINT alpDx, LPSIZE lpSize)->BOOL {
+	pub fn GetTextExtentExPointI(&self,pgiIn: LPWORD, cgi: c_int, nMaxExtent: c_int, lpnFit: LPINT, alpDx: LPINT, lpSize: LPSIZE)->BOOL {
 		self.assert_dc();
 		return ::GetTextExtentExPointI(self.hdc, pgiIn, cgi, nMaxExtent, lpnFit, alpDx, lpSize);
 	}
