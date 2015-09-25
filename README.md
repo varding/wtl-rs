@@ -1,5 +1,6 @@
-wtl-rs  Windows WTL GUI library for Rust
+wtl-rs  
 =====
+Windows WTL GUI library for Rust
 
 Installation
 =====
