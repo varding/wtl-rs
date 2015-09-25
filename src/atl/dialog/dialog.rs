@@ -92,6 +92,7 @@ impl<T> Dialog<T> {
         // handler must be sorted here:before any message been processed
         Self::sort_handlers(&mut *pself);
 
+
         //DWLP_DLGPROC = sizeof(LRESULT) + DWLP_MSGRESULT
         user32::SetWindowLongPtrW(hWnd,
                                   (std::mem::size_of::<LRESULT>() + DWLP_MSGRESULT as usize) as c_int,
@@ -171,11 +172,38 @@ impl<T> Dialog<T> {
         }else{
             self.bin_search_cnt = 0;
         }
+
+        // priority only used in sort algorithm
+        for h in &mut self.handlers {
+            h.priority = 0;
+        }
+
+        // for h in &self.handlers{
+        //     println!("{}", h);
+        // }
     }
 
     //messages
     pub fn ProcessWindowMessage(&mut self,hWnd:HWND,uMsg:UINT,wParam:WPARAM,lParam:LPARAM,lResult:&mut LRESULT,dwMsgMapID:DWORD ) -> BOOL {
         let mut e = Event::new(hWnd,uMsg,wParam,lParam,lResult);
+        
+        // this should be called before TranslateMessage and DispathMessage
+        // let mut i = 0;
+        // // check if "PreTranslateMessage" exist
+        // while self.handlers[i].key() == 0 {
+        //     // call PreTranslateMessage
+        //     unsafe{
+        //         (self.handlers[i].call)(e,&mut *self.root);
+        //     }
+
+        //     // stop call PreTranslateMessage that has low priority,or the real message handlers
+        //     if *lResult > 0{
+        //         return TRUE;
+        //     }
+
+        //     i+=1;
+        // }
+
         let k:HandleKey;
         match uMsg {
             WM_COMMAND=>{
@@ -481,13 +509,12 @@ impl<T> Dialog<T> {
 //     fn register(&mut self,&MessageLoop);
 // }
 
+#[repr(C,packed)]
 struct HandleKey {
-    msg :WORD,
-    id  :WORD,
+    priority:u16,
     code:WORD,
-    priority:u16,   //this only use for sorting algorithm ,after that it will be set to zero for search algorithm
-                    //so user can't set priority at runtime
-    //hwnd:HWND,
+    id  :WORD,
+    msg :WORD,
 }
 
 impl HandleKey {
@@ -521,16 +548,27 @@ impl HandleKey {
     }
 }
 
+/// Priority which is ranging from 0 ~ 65535. If more than one handler for the same message/command/notify,
+/// then the wtl-rs will call them by priority,the smaller number the higher priority.
+/// 0 ~ 99 been reserved for wtl-rs system,so user can use 100 ~ 65535
+//this only use for sorting algorithm ,after that it will be set to zero for search algorithm
+//so user can't set priority at runtime
+
+/// the sort algorithm convert *self to u64, so only little endian machine can be sort correct
 #[repr(C,packed)]
 pub struct Handler<T> {
-    msg :WORD,
-    id  :WORD,
+    priority:u16,
     code:WORD,
-    priority:u16,   //this only use for sorting algorithm ,after that it will be set to zero for search algorithm
-                    //so user can't set priority at runtime
-    //hwnd:HWND,
-
+    id  :WORD,
+    msg :WORD,
+    
     call:Rc<Fn(&mut Event,&mut T)>,
+}
+
+impl<T> fmt::Display for Handler<T>{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Handler:\nmsg:{}\nid:{}\ncode:{}\npriority:{}\n", self.msg,self.id,self.code,self.priority)
+    }
 }
 
 impl<T> Handler<T> {
@@ -558,7 +596,32 @@ impl<T> Handler<T> {
     }
 }
 
+/// only handle the priority setting method
+pub struct HandlerPriority<'a,T:'a> {
+    h: &'a mut Handler<T>
+}
 
+/// priority ranges from 0 ~ 65535
+impl <'a,T> HandlerPriority<'a,T> {
+    #[inline(always)]
+    pub fn new(h:&'a mut Handler<T>)->HandlerPriority<'a,T>{
+        HandlerPriority{
+            h:h,
+        }
+    }
+
+    /// low priority,p range from 0 ~ 32767(0x7FFF),and real priority range from 32768 ~ 65535
+    pub fn set_low_priority(&mut self,p:u16){
+        debug_assert!(p < 8000);
+        self.h.priority = p + 8000;        //32767
+    }
+
+    /// high priority, p range from 0 ~ 32767,and real priority range from 0 ~ 32767
+    pub fn set_high_priority(&mut self,p:u16){
+        debug_assert!(p < 8000);
+        self.h.priority = p;
+    }
+}
 /////////////////////////////////////////////////////////
 // expose all cwin methods
 

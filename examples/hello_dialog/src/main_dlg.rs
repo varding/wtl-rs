@@ -22,17 +22,17 @@ impl MainDialogHandler {
 
 impl ui::DialogHandler for MainDialogHandler {
     fn register_handler(&self,r:&mut ui::Root){
-        r.main_dlg.this_msg().on_init_dialog(0, |_,t|{
+        r.main_dlg.this_msg().on_init_dialog(|_,t|{
             println!("hello main dlg");
             t.main_dlg.this.CenterWindow(NULL_HWND);
         });
 
-        r.main_dlg.this_msg().on_close(0, |_,_|{
+        r.main_dlg.this_msg().on_close(|_,_|{
             println!("bye main dlg");
             unsafe{user32::PostQuitMessage(0)};
-        });
+        }).set_low_priority(100);       // only for test
 
-        r.main_dlg.btn_about_msg().on_click(0, |_,t|{
+        r.main_dlg.btn_about_msg().on_click(|_,t|{
             println!("show about dlg");
             t.main_dlg.about_dialog.this.ShowWindow(SW_SHOW);
         });

@@ -8,7 +8,7 @@
 */
 
 pub use self::dlg_msg::DlgMsg;
-pub use self::dialog::{Dialog,Handler};
+pub use self::dialog::{Dialog,Handler,HandlerPriority};
 pub use self::event::Event;
 
 

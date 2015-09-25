@@ -1,4 +1,4 @@
 
-//pub use cdc::CDC;
+pub use cdc::CDC;
 
-//mod cdc;
+mod cdc;

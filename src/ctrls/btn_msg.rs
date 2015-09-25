@@ -15,7 +15,7 @@ use winapi::*;
 //use super::consts::*;
 //use super::Event;
 
-use atl::{Handler,Event};
+use atl::{Handler,HandlerPriority,Event};
 //use atl::CWindow;
 
 pub struct BtnMsg <'a,T:'a> {
@@ -32,11 +32,12 @@ impl<'a,T> BtnMsg<'a,T> {
 	}
 }
 
-
 impl<'a,T> BtnMsg<'a,T> {
 	// BN_CLICKED
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb761825(v=vs.85).aspx
-	pub fn on_click<F>(&mut self,priority:u16,f:F) where F:Fn(&mut Event,&mut T) + 'static {
-        self.h.push(Handler::new(WM_COMMAND, self.id, BN_CLICKED, priority, f));
+	pub fn on_click<F>(&mut self,f:F)->HandlerPriority<T> where F:Fn(&mut Event,&mut T) + 'static {
+        self.h.push(Handler::new(WM_COMMAND, self.id, BN_CLICKED, 100, f));
+        let l = self.h.len()-1;
+		HandlerPriority::new(&mut self.h[l])
     }
 }

@@ -11,19 +11,19 @@ pub struct AboutDialogHandler;
 
 impl ui::DialogHandler for AboutDialogHandler {
     fn register_handler(&self,r:&mut ui::Root){
-        r.main_dlg.about_dialog.this_msg().on_init_dialog(0, |_,t|{
+        r.main_dlg.about_dialog.this_msg().on_init_dialog(|_,t|{
             println!("hello about");
             t.main_dlg.about_dialog.this.CenterWindow(t.main_dlg.this.GetHwnd());
         });
 
-        r.main_dlg.about_dialog.this_msg().on_close(0, |_,t|{
+        r.main_dlg.about_dialog.this_msg().on_close(|_,t|{
             println!("hide about dlg");
             //unsafe{user32::PostQuitMessage(0)};
             //t.main_dlg.about_dialog.this.DestroyWindow();
             t.main_dlg.about_dialog.this.ShowWindow(SW_HIDE);
         });
 
-        r.main_dlg.about_dialog.btn_ok_msg().on_click(0, |e:&mut Event,_|{
+        r.main_dlg.about_dialog.btn_ok_msg().on_click(|e:&mut Event,_|{
             show_msg_dlg(e.get_hwnd());
         });
     }
