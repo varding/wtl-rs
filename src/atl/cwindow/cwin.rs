@@ -3,6 +3,7 @@ use std;
 use winapi::*;
 use user32;
 use shell32;
+use misc::ToCU16Str;
 
 pub const NULL_HWND  : HWND  = 0 as HWND;
 pub const NULL_LPARAM:LPARAM = 0 as LPARAM;
@@ -128,7 +129,7 @@ impl CWindow {
     }
 
 	//https://msdn.microsoft.com/en-us/library/windows/desktop/ms632676(v=vs.85).aspx
-	//we don't know what will get,so the return must be cwindow
+	//I don't know what will get,so the return must be cwindow
     pub fn ChildWindowFromPoint(&self, point: POINT) -> CWindow {
         self.assert_window();
         unsafe {
@@ -244,11 +245,11 @@ impl CWindow {
 	//but rust must init first,so this function must be static
 	//let b:CButton = CButton::Create(...);
 	//a wrapper is needed, e.g CButton::New(),new will call create
-    pub fn Create(lpstrWndClass: LPCWSTR,
+    pub fn Create(lpstrWndClass: &str,
                   hWndParent: HWND,
                   // _U_RECT rect = NULL,
                   rect: &RECT,
-                  szWindowName: LPCWSTR,
+                  szWindowName: &str,
                   dwStyle: DWORD,
                   dwExStyle: DWORD,
                   // _U_MENUorID MenuOrID = 0U,
@@ -259,10 +260,12 @@ impl CWindow {
 		//assert!(self.0 == (0 as HWND));
 		//if(rect.m_lpRect == NULL)
 		//	rect.m_lpRect = &rcDefault;
+        let c = lpstrWndClass.to_c_u16();
+        let n = szWindowName.to_c_u16();
         unsafe {
             user32::CreateWindowExW(dwExStyle,
-                                    lpstrWndClass,
-                                    szWindowName,
+                                    c.as_ptr(),
+                                    n.as_ptr(),
                                     dwStyle,
                                     rect.left,
                                     rect.top,
@@ -376,10 +379,11 @@ impl CWindow {
 	// 	user32::SendMessage(hWnd, message, wParam, lParam)
 	// }
 
-	// pub fn SetWindowText (&self,lpszString:LPCTSTR) -> bool {
-	// 	self.assert_window();
-	// 	user32::SetWindowText(self.0, lpszString)  == TRUE
-	// }
+	pub fn SetWindowText (&self, lpszString: &str) -> bool {
+		self.assert_window();
+        let s = lpszString.to_c_u16();
+		unsafe{user32::SetWindowTextW(self.0, s.as_ptr())  == TRUE}
+	}
 
 	// pub fn GetWindowText (&self,lpszStringBuf:LPTSTR,nMaxCount:c_int) -> c_int {
 	// 	self.assert_window();
@@ -485,13 +489,7 @@ impl CWindow {
         }
     }
 
-    pub fn MoveWindow(&self,
-                      x: c_int,
-                      y: c_int,
-                      nWidth: c_int,
-                      nHeight: c_int,
-                      bRepaint: BOOL)
-                      -> bool {
+    pub fn MoveWindow(&self,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int,bRepaint: BOOL) -> bool {
         self.assert_window();
         unsafe {
             user32::MoveWindow(self.0, x, y, nWidth, nHeight, bRepaint) == TRUE
@@ -879,27 +877,31 @@ impl CWindow {
             user32::CheckRadioButton(self.0, nIDFirstButton, nIDLastButton, nIDCheckButton) == TRUE
         }
     }
+/*
+	pub fn DlgDirList (&self,lpPathSpec: &str,nIDListBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
+		self.assert_window();
+        let p  = lpPathSpec.to_c_u16();
+		user32::DlgDirList(self.0, p, nIDListBox, nIDStaticPath, nFileType)
+	}
 
-	// pub fn DlgDirList (&self,lpPathSpec:LPTSTR,nIDListBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
-	// 	self.assert_window();
-	// 	user32::DlgDirList(self.0, lpPathSpec, nIDListBox, nIDStaticPath, nFileType)
-	// }
+	pub fn DlgDirListComboBox (&self,lpPathSpec: &str,nIDComboBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
+		self.assert_window();
+        let p = lpPathSpec.to_c_u16();
+		user32::DlgDirListComboBox(self.0, p, nIDComboBox, nIDStaticPath, nFileType)
+	}
 
-	// pub fn DlgDirListComboBox (&self,lpPathSpec:LPTSTR,nIDComboBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
-	// 	self.assert_window();
-	// 	user32::DlgDirListComboBox(self.0, lpPathSpec, nIDComboBox, nIDStaticPath, nFileType)
-	// }
+	pub fn DlgDirSelect (&self,lpString: &str,nCount:c_int,nIDListBox:c_int) -> bool {
+		self.assert_window();
+        let s = lpString.to_c_u16();
+		user32::DlgDirSelectEx(self.0, s.as_ptr(), nCount, nIDListBox) == TRUE
+	}
 
-	// pub fn DlgDirSelect (lpString:LPTSTR,nCount:c_int,nIDListBox:c_int) -> bool {
-	// 	self.assert_window();
-	// 	user32::DlgDirSelectEx(self.0, lpString, nCount, nIDListBox) == TRUE
-	// }
-
-	// pub fn DlgDirSelectComboBox (lpString:LPTSTR,nCount:c_int,nIDComboBox:c_int) -> bool {
-	// 	self.assert_window();
-	// 	user32::DlgDirSelectComboBoxEx(self.0, lpString, nCount, nIDComboBox) == TRUE
-	// }
-
+	pub fn DlgDirSelectComboBox (&self,lpString:&str,nCount:c_int,nIDComboBox:c_int) -> bool {
+		self.assert_window();
+        let s = lpString.to_c_u16();
+		user32::DlgDirSelectComboBoxEx(self.0, s.as_ptr(), nCount, nIDComboBox) == TRUE
+	}
+*/
     pub fn GetDlgItemInt(&self, nID: c_int) -> UINT {
         self.assert_window();
         unsafe {
@@ -914,10 +916,26 @@ impl CWindow {
         }
     }
 
-	// pub fn GetDlgItemText (&self,nID:c_int,lpStr:LPTSTR,nMaxCount:c_int) -> UINT {
-	// 	self.assert_window();
-	// 	user32::GetDlgItemText(self.0, nID, lpStr, nMaxCount)
-	// }
+	//pub fn GetDlgItemText (&self,nID:c_int,lpStr:LPTSTR,nMaxCount:c_int) -> UINT {
+    pub fn GetDlgItemText (&self, nID: c_int) -> String {
+		self.assert_window();
+        let hItem = self.GetDlgItem(nID);
+        if hItem != NULL_HWND {
+            let nLength = unsafe{user32::GetWindowTextLengthW(hItem) + 1};
+            //LPTSTR pszText;
+            let mut pszText: Vec<u16> = Vec::with_capacity(nLength as usize);
+            //nLength = 
+            //pszText = strText.GetBuffer(nLength+1);
+            let nRead = unsafe{user32::GetWindowTextW(hItem, pszText.as_mut_ptr(), nLength)};
+            debug_assert!(nRead == nLength - 1);
+            String::from_utf16_lossy(pszText.as_ref())
+        }
+        else
+        {
+            String::new()
+        }
+		//user32::GetDlgItemText(self.0, nID, lpStr, nMaxCount)
+	}
 
 	// UINT GetDlgItemText(
 	// 	 c_int nID,

@@ -1,14 +1,261 @@
-#![allow(dead_code, non_snake_case)]
+#![allow(dead_code, non_snake_case, non_camel_case_types)]
 
 use std::mem;
 use winapi::*;
 use gdi32;
 use kernel32;
 use user32;
+use std::ops::Drop;
+use atl::NULL_HWND;
 
 use misc::ToCU16Str;
 
-struct cdc_inner {
+////////////////////////////////////////////
+/// only operate on HDC,but not owened
+pub struct CDCHandle {
+    pub inner: Inner,
+}
+
+impl CDCHandle {
+	pub fn new()->CDCHandle{
+		CDCHandle{
+			inner: Inner::new(),
+		}
+	}
+
+	pub fn from_handle(h: HDC) -> CDCHandle {
+		CDCHandle{
+			inner: Inner::from_handle(h),
+		}
+	}
+
+	pub fn Attach(&mut self, hDC: HDC) {
+		self.inner.hdc = hDC;
+	}
+}
+
+////////////////////////////////////////////
+/// the HDC is owened by CDC
+pub struct CDC {
+    pub inner: Inner,
+}
+
+impl CDC {
+	pub fn new()->CDC{
+		CDC{
+			inner: Inner::new(),
+		}
+	}
+
+	pub fn from_handle(h: HDC) -> CDC {
+		CDC{
+			inner: Inner::from_handle(h),
+		}
+	}
+
+	pub fn Attach(&mut self, hDC: HDC) {
+		if self.inner.hdc != NULL_HDC && self.inner.hdc != hDC {
+			unsafe{gdi32::DeleteDC(self.inner.hdc)};
+		}
+		self.inner.hdc = hDC;
+	}
+}
+
+impl Drop for CDC {
+	fn drop(&mut self){
+		if self.inner.hdc != NULL_HDC {
+			unsafe{gdi32::DeleteDC(self.inner.Detach())};
+		}
+	}
+}
+
+////////////////////////////////////////////
+///
+pub struct CPaintDC {
+    pub inner: Inner,
+    hwnd: HWND,
+    ps: PAINTSTRUCT,
+}
+
+impl CPaintDC {
+	pub fn new(hwnd: HWND) -> CPaintDC {
+		debug_assert!(unsafe{user32::IsWindow(hwnd)} == TRUE);
+		let mut ps:PAINTSTRUCT = unsafe{mem::zeroed()};
+		let hdc = unsafe{user32::BeginPaint(hwnd, &mut ps)};
+		CPaintDC{
+			inner: Inner::from_handle(hdc),
+			hwnd : hwnd,
+			ps: ps,
+		}
+	}
+}
+
+impl Drop for CPaintDC {
+	fn drop(&mut self){
+		debug_assert!(self.inner.hdc != NULL_HDC);
+		debug_assert!(unsafe{user32::IsWindow(self.hwnd)} == TRUE);
+		unsafe{user32::EndPaint(self.hwnd, &self.ps)};
+		self.inner.Detach();
+	}
+}
+// class CPaintDC : public CDC
+// {
+// public:
+// // Data members
+// 	HWND m_hWnd;
+// 	PAINTSTRUCT m_ps;
+
+// // Constructor/destructor
+// 	CPaintDC(HWND hWnd)
+// 	{
+// 		ATLASSERT(::IsWindow(hWnd));
+// 		m_hWnd = hWnd;
+// 		m_hDC = ::BeginPaint(hWnd, &m_ps);
+// 	}
+
+// 	~CPaintDC()
+// 	{
+// 		ATLASSERT(m_hDC != NULL);
+// 		ATLASSERT(::IsWindow(m_hWnd));
+// 		::EndPaint(m_hWnd, &m_ps);
+// 		Detach();
+// 	}
+// };
+
+////////////////////////////////////////////
+pub struct CClientDC {
+    pub inner: Inner,
+    hwnd : HWND,
+}
+
+impl CClientDC {
+	pub fn new(hwnd: HWND) -> CClientDC {
+		debug_assert!(hwnd != NULL_HWND || unsafe{user32::IsWindow(hwnd)}  == TRUE);
+		let hdc = unsafe{user32::GetDC(hwnd)};
+		CClientDC{
+			inner: Inner::from_handle(hdc),
+			hwnd : hwnd,
+		}
+	}
+}
+
+impl Drop for CClientDC {
+	fn drop(&mut self){
+		debug_assert!(self.inner.hdc != NULL_HDC);
+		unsafe{user32::ReleaseDC(self.hwnd, self.inner.Detach())};
+	}
+}
+
+// class CClientDC : public CDC
+// {
+// public:
+// // Data members
+// 	HWND m_hWnd;
+
+// // Constructor/destructor
+// 	CClientDC(HWND hWnd)
+// 	{
+// 		ATLASSERT(hWnd == NULL || ::IsWindow(hWnd));
+// 		m_hWnd = hWnd;
+// 		m_hDC = ::GetDC(hWnd);
+// 	}
+
+// 	~CClientDC()
+// 	{
+// 		ATLASSERT(m_hDC != NULL);
+// 		::ReleaseDC(m_hWnd, Detach());
+// 	}
+// };
+
+////////////////////////////////////////////
+pub struct CWindowDC {
+    pub inner: Inner,
+    hwnd : HWND,
+}
+
+impl CWindowDC {
+	pub fn new(hwnd: HWND) -> CWindowDC {
+		debug_assert!(hwnd == NULL_HWND || unsafe{user32::IsWindow(hwnd)} == TRUE);
+		let hdc = unsafe{user32::GetWindowDC(hwnd)};
+		CWindowDC{
+			inner: Inner::from_handle(hdc),
+			hwnd : hwnd,
+		}
+	}
+}
+impl Drop for CWindowDC {
+	fn drop(&mut self){
+		debug_assert!(self.inner.hdc != NULL_HDC);
+		unsafe{user32::ReleaseDC(self.hwnd, self.inner.Detach())};
+	}
+}
+
+// class CWindowDC : public CDC
+// {
+// public:
+// // Data members
+// 	HWND m_hWnd;
+
+// // Constructor/destructor
+// 	CWindowDC(HWND hWnd)
+// 	{
+// 		ATLASSERT(hWnd == NULL || ::IsWindow(hWnd));
+// 		m_hWnd = hWnd;
+// 		m_hDC = ::GetWindowDC(hWnd);
+// 	}
+
+// 	~CWindowDC()
+// 	{
+// 		ATLASSERT(m_hDC != NULL);
+// 		::ReleaseDC(m_hWnd, Detach());
+// 	}
+// };
+
+////////////////////////////////////////////
+// pub struct CMemoryDC {
+//     inner: Inner,
+//     hdc_org: HDC,
+//     rc_paint: RECT,
+//     bmp: CBitmap,
+//     bmp_old: HBITMAP,
+// }
+
+// impl CMemoryDC {
+// 	pub fn new(hdc: HDC, rc: &RECT) -> CMemoryDC {
+
+// 	}
+// }
+// class CMemoryDC : public CDC
+// {
+// public:
+// // Data members
+// 	HDC m_hDCOriginal;
+// 	RECT m_rcPaint;
+// 	CBitmap m_bmp;
+// 	HBITMAP m_hBmpOld;
+
+// // Constructor/destructor
+// 	CMemoryDC(HDC hDC, const RECT& rcPaint) : m_hDCOriginal(hDC), m_hBmpOld(NULL)
+// 	{
+// 		m_rcPaint = rcPaint;
+// 		CreateCompatibleDC(m_hDCOriginal);
+// 		ATLASSERT(m_hDC != NULL);
+// 		m_bmp.CreateCompatibleBitmap(m_hDCOriginal, m_rcPaint.right - m_rcPaint.left, m_rcPaint.bottom - m_rcPaint.top);
+// 		ATLASSERT(m_bmp.m_hBitmap != NULL);
+// 		m_hBmpOld = SelectBitmap(m_bmp);
+// 		SetViewportOrg(-m_rcPaint.left, -m_rcPaint.top);
+// 	}
+
+// 	~CMemoryDC()
+// 	{
+// 		::BitBlt(m_hDCOriginal, m_rcPaint.left, m_rcPaint.top, m_rcPaint.right - m_rcPaint.left, m_rcPaint.bottom - m_rcPaint.top, m_hDC, m_rcPaint.left, m_rcPaint.top, SRCCOPY);
+// 		SelectBitmap(m_hBmpOld);
+// 	}
+// };
+
+////////////////////////////////////////////
+// inner of cdc,cdchandle,cpaintdc,cclientdc...
+pub struct Inner {
     hdc: HDC,
 }
 
@@ -34,34 +281,18 @@ macro_rules! extract_opt_by_null {
 	};
 }
 
-impl cdc_inner {
-// public:
-// // Data members
-// 	HDC self.hdc;
+impl Inner {
+	pub fn new() -> Inner {
+		Inner{
+			hdc: NULL_HDC,
+		}
+	}
 
-// // Constructor/destructor/operators
-// 	CDCT(HDC hDC = NULL) : self.hdc(hDC)
-// 	{
-// 	}
-
-// 	~CDCT()
-// 	{
-// 		if(t_bManaged && self.hdc != NULL)
-// 			::DeleteDC(Detach());
-// 	}
-
-// 	CDCT<t_bManaged>& operator =(HDC hDC)
-// 	{
-// 		Attach(hDC);
-// 		return *this;
-// 	}
-
-	//  pub fn Attach(&self,hDC: HDC) {
-	// 	if t_bManaged && self.hdc != NULL && self.hdc != hDC{
-	// 		gdi32::DeleteDC(self.hdc);
-	// 	}
-	// 	self.hdc = hDC;
-	// }
+	pub fn from_handle(h: HDC) -> Inner {
+		Inner{
+			hdc: h,
+		}
+	}
 
 	pub fn Detach (&mut self)->HDC {
 		let hDC = self.hdc;
@@ -76,7 +307,7 @@ impl cdc_inner {
 	pub fn assert_null_dc(&self){
 		debug_assert!(self.hdc == NULL_HDC);
 	}
-	//pub fn HDC (&self)->operator { return self.hdc; }
+	//fn HDC (&self)->operator { return self.hdc; }
 
 	pub fn IsNull (&self)->bool { (self.hdc == NULL_HDC) }
 
@@ -88,32 +319,32 @@ impl cdc_inner {
 	}
 //#endif // !_WIN32_WCE
 
-	// pub fn GetCurrentPen (&self)->CPenHandle {
+	// fn GetCurrentPen (&self)->CPenHandle {
 	// 	self.assert_dc();
 	// 	CPenHandle(gdi32::GetCurrentObject(self.hdc, OBJ_PEN) as HPEN)
 	// }
 
-	// pub fn GetCurrentBrush (&self)->CBrushHandle {
+	// fn GetCurrentBrush (&self)->CBrushHandle {
 	// 	self.assert_dc();
 	// 	CBrushHandle(gdi32::GetCurrentObject(self.hdc, OBJ_BRUSH) as HBRUSH)
 	// }
 
-	// pub fn GetCurrentPalette (&self)->CPaletteHandle {
+	// fn GetCurrentPalette (&self)->CPaletteHandle {
 	// 	self.assert_dc();
 	// 	CPaletteHandle(gdi32::GetCurrentObject(self.hdc, OBJ_PAL) as HPALETTE)
 	// }
 
-	// pub fn GetCurrentFont (&self)->CFontHandle {
+	// fn GetCurrentFont (&self)->CFontHandle {
 	// 	self.assert_dc();
 	// 	CFontHandle(gdi32::GetCurrentObject(self.hdc, OBJ_FONT) as HFONT)
 	// }
 
-	// pub fn GetCurrentBitmap (&self)->CBitmapHandle {
+	// fn GetCurrentBitmap (&self)->CBitmapHandle {
 	// 	self.assert_dc();
 	// 	CBitmapHandle(gdi32::GetCurrentObject(self.hdc, OBJ_BITMAP) as HBITMAP)
 	// }
 
-	//  pub fn CreateDC(&self,lpszDriverName: LPCTSTR,lpszDeviceName: LPCTSTR,lpszOutput: LPCTSTR,lpInitData: &DEVMODE)->HDC {
+	//  fn CreateDC(&self,lpszDriverName: LPCTSTR,lpszDeviceName: LPCTSTR,lpszOutput: LPCTSTR,lpInitData: &DEVMODE)->HDC {
 	// 	debug_assert!(self.hdc == NULL_HDC);
 	// 	self.hdc = gdi32::CreateDCW(lpszDriverName, lpszDeviceName, lpszOutput, lpInitData);
 	// 	self.hdc
@@ -201,7 +432,7 @@ impl cdc_inner {
 	}
 
 //#ifndef _WIN32_WCE
-// 	 pub fn EnumObjects(&self,nObjectType: c_int,@ c_int (CALLBACK* lpfn)(LPVOID,@ LPARAM),lpData: LPARAM)->c_int {
+// 	 fn EnumObjects(&self,nObjectType: c_int,@ c_int (CALLBACK* lpfn)(LPVOID,@ LPARAM),lpData: LPARAM)->c_int {
 // 		self.assert_dc();
 // //#ifdef STRICT
 // 		return ::EnumObjects(self.hdc, nObjectType, lpfn as GOBJENUMPROC, lpData);
@@ -666,7 +897,7 @@ impl cdc_inner {
 		unsafe{gdi32::GetClipBox(self.hdc, lpRect)}
 	}
 
-	// pub fn GetClipRgn (&self,region: &mut CRgn)->c_int {
+	// fn GetClipRgn (&self,region: &mut CRgn)->c_int {
 	// 	self.assert_dc();
 	// 	if region.IsNull() == TRUE {
 	// 		region.CreateRectRgn(0, 0, 0, 0);
@@ -1119,7 +1350,7 @@ impl cdc_inner {
 		unsafe{gdi32::TransparentBlt(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, nSrcWidth, nSrcHeight, crTransparent)}
 	}
 //#else // CE specific
-	//  pub fn TransparentImage(&self,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int,hSrcDC: HDC,xSrc: c_int,ySrc: c_int,nSrcWidth: c_int,nSrcHeight: c_int,crTransparent: UINT)->BOOL {
+	//  fn TransparentImage(&self,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int,hSrcDC: HDC,xSrc: c_int,ySrc: c_int,nSrcWidth: c_int,nSrcHeight: c_int,crTransparent: UINT)->BOOL {
 	// 	self.assert_dc();
 	// 	gdi32::TransparentImage(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, nSrcWidth, nSrcHeight, crTransparent)
 	// }
@@ -1285,7 +1516,7 @@ impl cdc_inner {
 */
 // Text Functions
 //#ifndef _WIN32_WCE
-	//pub fn TextOut(&self,x: c_int,y: c_int,lpszString: LPCTSTR,mut nCount: Option<c_int> /*= -1*/)->BOOL {
+	//fn TextOut(&self,x: c_int,y: c_int,lpszString: LPCTSTR,mut nCount: Option<c_int> /*= -1*/)->BOOL {
 	pub fn TextOut(&self,x: c_int,y: c_int,lpszString: &str, nCount: Option<c_int> /*= -1*/)->BOOL {
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
@@ -1295,7 +1526,7 @@ impl cdc_inner {
 	}
 //#endif // !_WIN32_WCE
 
-	//pub fn ExtTextOut(&self,x: c_int,y: c_int,nOptions: UINT,lpRect: LPCRECT,lpszString: LPCTSTR,mut nCount: Option<UINT> /*= -1*/,mut lpDxWidths: Option<LPINT> /*=NULL*/)->BOOL {
+	//fn ExtTextOut(&self,x: c_int,y: c_int,nOptions: UINT,lpRect: LPCRECT,lpszString: LPCTSTR,mut nCount: Option<UINT> /*= -1*/,mut lpDxWidths: Option<LPINT> /*=NULL*/)->BOOL {
 	pub fn ExtTextOut(&self,x: c_int,y: c_int,nOptions: UINT,lpRect: LPCRECT,lpszString: &str, nCount: Option<UINT> /*= -1*/, lpDxWidths: Option<LPINT> /*=NULL*/)->BOOL {		
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
@@ -1312,7 +1543,7 @@ impl cdc_inner {
 	}
 
 //#ifndef _WIN32_WCE
-	//pub fn TabbedTextOut(&self,x: c_int,y: c_int,lpszString: LPCTSTR,mut nCount: Option<c_int> /*= -1*/,mut nTabPositions: Option<c_int> /*=0*/,mut lpnTabStopPositions: Option<LPINT> /*=NULL*/,mut nTabOrigin: Option<c_int> /*=0*/)->SIZE {
+	//fn TabbedTextOut(&self,x: c_int,y: c_int,lpszString: LPCTSTR,mut nCount: Option<c_int> /*= -1*/,mut nTabPositions: Option<c_int> /*=0*/,mut lpnTabStopPositions: Option<LPINT> /*=NULL*/,mut nTabOrigin: Option<c_int> /*=0*/)->SIZE {
 	pub fn TabbedTextOut(&self,x: c_int,y: c_int,lpszString: &str, nCount: Option<c_int> /*= -1*/, nTabPositions: Option<c_int> /*=0*/, lpnTabStopPositions: Option<LPINT> /*=NULL*/, nTabOrigin: Option<c_int> /*=0*/)->SIZE {
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
@@ -1330,7 +1561,7 @@ impl cdc_inner {
 	}
 //#endif // !_WIN32_WCE
 
-	//pub fn DrawText(&self,lpstrText: LPCTSTR,cchText: c_int,lpRect: LPRECT,uFormat: UINT)->c_int {
+	//fn DrawText(&self,lpstrText: LPCTSTR,cchText: c_int,lpRect: LPRECT,uFormat: UINT)->c_int {
 	pub fn DrawText(&self,lpstrText: &str,cchText: c_int,lpRect: LPRECT,uFormat: UINT)->c_int {
 		self.assert_dc();
 		let s = lpstrText.to_c_u16();
@@ -1340,13 +1571,13 @@ impl cdc_inner {
 		unsafe{user32::DrawTextW(self.hdc, s.as_ptr(), cchText, lpRect, uFormat)}
 	}
 
-	//  pub fn DrawText(&self,lpstrText: LPTSTR,cchText: c_int,lpRect: LPRECT,uFormat: UINT)->c_int {
+	//  fn DrawText(&self,lpstrText: LPTSTR,cchText: c_int,lpRect: LPRECT,uFormat: UINT)->c_int {
 	// 	self.assert_dc();
 	// 	user32::DrawTextW(self.hdc, lpstrText, cchText, lpRect, uFormat)
 	// }
 
 //#ifndef _WIN32_WCE
-	//pub fn DrawTextEx(&self,lpstrText: LPTSTR,cchText: c_int,lpRect: LPRECT,uFormat: UINT,mut lpDTParams: Option<LPDRAWTEXTPARAMS> /*=NULL*/)->c_int {
+	//fn DrawTextEx(&self,lpstrText: LPTSTR,cchText: c_int,lpRect: LPRECT,uFormat: UINT,mut lpDTParams: Option<LPDRAWTEXTPARAMS> /*=NULL*/)->c_int {
 	pub fn DrawTextEx(&self,lpstrText: &str,cchText: c_int,lpRect: LPRECT,uFormat: UINT, lpDTParams: Option<LPDRAWTEXTPARAMS> /*=NULL*/)->c_int {
 		self.assert_dc();
 		let s = lpstrText.to_c_u16();
@@ -1362,7 +1593,7 @@ impl cdc_inner {
 //#endif // !_WIN32_WCE
 
 //#if (_WIN32_WINNT >= 0x0501)
-	/*
+	
 	pub fn DrawShadowText(&self,lpstrText: LPCWSTR,cchText: c_int,lpRect: LPRECT,dwFlags: DWORD,clrText: COLORREF,clrShadow: COLORREF,xOffset: c_int,yOffset: c_int)->c_int {
 		self.assert_dc();
 		// This function is present only if comctl32.dll version 6 is loaded;
@@ -1370,23 +1601,25 @@ impl cdc_inner {
 		// _WIN32_WINNT >= 0x0501 to run on older Windows/CommCtrl
 		let mut nRet = 0 as c_int;
 		let dll_name = "comctl32.dll".to_c_u16();
-		let hCommCtrlDLL = kernel32::LoadLibraryW(dll_name.as_ptr()) as HMODULE;
-		debug_assert!(hCommCtrlDLL != 0 as HMODULE);
-		if hCommCtrlDLL != 0 as HMODULE {
-			//typedef c_int (WINAPI *PFN_DrawShadowText)(HDC hDC, LPCWSTR lpstrText, UINT cchText, LPRECT lpRect, DWORD dwFlags, COLORREF clrText, COLORREF clrShadow, c_int xOffset, c_int yOffset);
-			type PFN_DrawShadowText = fn(hDC: HDC, lpstrText: LPCWSTR, cchText: UINT, lpRect: LPRECT, dwFlags: DWORD, clrText: COLORREF, clrShadow: COLORREF, xOffset: c_int, yOffset: c_int)->c_int;
-			let pname = "DrawShadowText";
-
-			let pfnDrawShadowText = kernel32::GetProcAddress(hCommCtrlDLL, "DrawShadowText".as_ptr()) as PFN_DrawShadowText;
-			debug_assert!(pfnDrawShadowText != 0 as PFN_DrawShadowText);   // this function requires CommCtrl6
-			if pfnDrawShadowText != 0 as PFN_DrawShadowText {
-				nRet = pfnDrawShadowText(self.hdc, lpstrText, cchText, lpRect, dwFlags, clrText, clrShadow, xOffset, yOffset);
+		unsafe{
+			let hCommCtrlDLL = kernel32::LoadLibraryW(dll_name.as_ptr()) as HMODULE;
+			debug_assert!(hCommCtrlDLL != 0 as HMODULE);
+			if hCommCtrlDLL != 0 as HMODULE {
+				//typedef c_int (WINAPI *PFN_DrawShadowText)(HDC hDC, LPCWSTR lpstrText, UINT cchText, LPRECT lpRect, DWORD dwFlags, COLORREF clrText, COLORREF clrShadow, c_int xOffset, c_int yOffset);
+				type PFN_DrawShadowText = fn(hDC: HDC, lpstrText: LPCWSTR, cchText: UINT, lpRect: LPRECT, dwFlags: DWORD, clrText: COLORREF, clrShadow: COLORREF, xOffset: c_int, yOffset: c_int)->c_int;
+				//let pname = "DrawShadowText".bytes().map(|x|x as i8).collect::<Vec<_>>();
+				let addr = kernel32::GetProcAddress(hCommCtrlDLL, "DrawShadowText".as_ptr() as *const _);
+				debug_assert!(addr != 0 as *const _);   // this function requires CommCtrl6
+				if addr != 0 as *const _ {
+					let pfnDrawShadowText: PFN_DrawShadowText = mem::transmute(addr);
+					nRet = pfnDrawShadowText(self.hdc, lpstrText, cchText as UINT, lpRect, dwFlags, clrText, clrShadow, xOffset, yOffset);
+				}
+				kernel32::FreeLibrary(hCommCtrlDLL);
 			}
-			kernel32::FreeLibrary(hCommCtrlDLL);
 		}
 		nRet
 	}
-	*/
+	
 //#endif // (_WIN32_WINNT >= 0x0501)
 
 	pub fn GetTextExtent(&self,lpszString: &str,mut nCount: c_int,lpSize: LPSIZE)->BOOL {
@@ -1436,7 +1669,7 @@ impl cdc_inner {
 	}
 //#endif // !defined(_WIN32_WCE) || (_WIN32_WCE >= 400)
 
-	// pub fn GetTextFace(&self,lpszFacename: &String,nCount: c_int) -> c_int {
+	// fn GetTextFace(&self,lpszFacename: &String,nCount: c_int) -> c_int {
 	// 	self.assert_dc();
 	// 	//let s = lpszFacename.to_c_u16();
 	// 	let v:[u16; 128];
@@ -1451,7 +1684,7 @@ impl cdc_inner {
 
 //#ifndef _ATL_NO_COM
 //#ifdef _OLEAUTO_H_
-	// pub fn GetTextFace (@BSTR& bstrFace)->BOOL {
+	// fn GetTextFace (@BSTR& bstrFace)->BOOL {
 	// 	USES_CONVERSION;
 	// 	self.assert_dc();
 	// 	debug_assert!(bstrFace == NULL);
@@ -1475,7 +1708,7 @@ impl cdc_inner {
 //#endif // !_ATL_NO_COM
 
 //#if defined(_WTL_USE_CSTRING) || defined(__ATLSTR_H__)
-	// pub fn GetTextFace (@_CSTRING_NS::CString& strFace)->c_int {
+	// fn GetTextFace (@_CSTRING_NS::CString& strFace)->c_int {
 	// 	self.assert_dc();
 
 	// 	c_int nLen = GetTextFaceLen();
@@ -1652,7 +1885,7 @@ impl cdc_inner {
 
 // MetaFile Functions
 //#ifndef _WIN32_WCE
-	//  pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+	//  fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
 	// 	self.assert_dc();
 	// 	if gdi32::GetDeviceCaps(self.hdc, TECHNOLOGY) == DT_METAFILE {
 	// 		// playing metafile in metafile, just use core windows API
@@ -1834,7 +2067,7 @@ impl cdc_inner {
 
 // Misc Helper Functions
 	// how to add PASCAL in declaration?
-	// pub fn GetHalftoneBrush()->CBrushHandle {
+	// fn GetHalftoneBrush()->CBrushHandle {
 	// 	let halftoneBrush = 0 as HBRUSH;
 	// 	let grayPattern:[WORD;8] = [0;8];
 	// 	//for(c_int i = 0; i < 8; i++)
@@ -2114,9 +2347,6 @@ impl cdc_inner {
 //#endif // (WINVER >= 0x0500) && !defined(_WIN32_WCE)
 }
 
-//typedef CDCT<false>   CDCHandle;
-//typedef CDCT<true>    CDC;
-
 //BaseTsd.h
 #[inline]
 fn PtrToInt(p: *const c_void) -> c_int {
@@ -2130,12 +2360,8 @@ fn LongToPtr(l: LONG) -> *const c_void {
 
 const HIMETRIC_INCH: c_int = 2540;
 
-fn abs(i: c_int) ->c_int {
-	if i < 0 {
-		-i
-	}else{
-		i
-	}
+fn abs(i: c_int) -> c_int {
+	if i < 0 {-i} else { i }
 }
 
 #[inline]
