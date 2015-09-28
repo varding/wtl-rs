@@ -9,10 +9,10 @@ extern crate shell32;
 extern crate gdi32;
 
 
-pub use self::misc::ToCU16Str;
+//pub use self::misc::*;
 
 pub mod atl;
 pub mod ctrls;
-//pub mod gdi;
+pub mod gdi;
 pub mod misc;
 

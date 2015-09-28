@@ -1,11 +1,11 @@
 
-
+use std::mem;
 use winapi::*;
 use gdi32;
 use kernel32;
 use user32;
 
-use ::ToCU16Str;
+use misc::ToCU16Str;
 
 pub const NULL_HDC: HDC = 0 as HDC;
 
@@ -13,7 +13,7 @@ struct cdc_inner {
     hdc: HDC,
 }
 
-macro_rules! get_default {
+macro_rules! extract_opt_by_default {
 	($d:expr,$v:ident,$t:ty) => {
 	    {
     		match $v {
@@ -24,7 +24,7 @@ macro_rules! get_default {
 	};
 }
 
-macro_rules! get_null_default {
+macro_rules! extract_opt_by_null {
 	($v:ident,$t:ty) => {
 	    {
     		match $v {
@@ -85,7 +85,7 @@ impl cdc_inner {
 //#ifndef _WIN32_WCE
 	pub fn WindowFromDC (&self)->HWND {
 		self.assert_dc();
-		user32::WindowFromDC(self.hdc)
+		unsafe{user32::WindowFromDC(self.hdc)}
 	}
 //#endif // !_WIN32_WCE
 
@@ -122,10 +122,11 @@ impl cdc_inner {
 
 	pub fn CreateCompatibleDC (&self,mut hDC: Option<HDC> /*NULL*/)->HDC {
 		debug_assert!(self.hdc == NULL_HDC);
-		let mut h = NULL_HDC;
-		if let Some(h1) = hDC {
-			h = h1;
-		}
+		// let mut h = NULL_HDC;
+		// if let Some(h1) = hDC {
+		// 	h = h1;
+		// }
+		let h = extract_opt_by_null!(hDC,HDC);
 		self.hdc = gdi32::CreateCompatibleDC(h);
 		self.hdc
 	}
@@ -170,7 +171,11 @@ impl cdc_inner {
 
 	pub fn ResetDC(&self,lpDevMode: &DEVMODEW)->BOOL {
 		self.assert_dc();
-		gdi32::ResetDCW(self.hdc, lpDevMode) != NULL_HDC
+		if gdi32::ResetDCW(self.hdc, lpDevMode) != NULL_HDC {
+			TRUE
+		}else{
+			FALSE
+		}
 	}
 
 // Drawing-Tool Functions
@@ -182,20 +187,18 @@ impl cdc_inner {
 
 	pub fn SetBrushOrg(&self,x: c_int,y: c_int,mut lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		let mut l:LPPOINT = 0 as LPPOINT;
-		if let Some(l1) = lpPoint {
-			l = l1;
-		}
-		gdi32::SetBrushOrgEx(self.hdc, x, y, l)
+		// let mut l:LPPOINT = 0 as LPPOINT;
+		// if let Some(l1) = lpPoint {
+		// 	l = l1;
+		// }
+		let p = extract_opt_by_null!(lpPoint,LPPOINT);
+		gdi32::SetBrushOrgEx(self.hdc, x, y, p)
 	}
 
 	pub fn SetBrushOrg_point(&self,point: POINT,mut lpPointRet: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		let mut l:LPPOINT = 0 as LPPOINT;
-		if let Some(l1) = lpPointRet {
-			l = l1;
-		}
-		gdi32::SetBrushOrgEx(self.hdc, point.x, point.y, l)
+		let p = extract_opt_by_null!(lpPointRet,LPPOINT);
+		gdi32::SetBrushOrgEx(self.hdc, point.x, point.y, p)
 	}
 
 //#ifndef _WIN32_WCE
@@ -213,35 +216,35 @@ impl cdc_inner {
 	pub fn SelectPen(&self,hPen: HPEN)->HPEN {
 		self.assert_dc();
 //#ifndef _WIN32_WCE
-		debug_assert!(hPen == 0 as HPEN || gdi32::GetObjectType(hPen) == OBJ_PEN || gdi32::GetObjectType(hPen) == OBJ_EXTPEN);
+		debug_assert!(hPen == 0 as HPEN || gdi32::GetObjectType(hPen as HGDIOBJ) == OBJ_PEN || gdi32::GetObjectType(hPen as HGDIOBJ) == OBJ_EXTPEN);
 //#else // CE specific
 //		ATLASSERT(hPen == NULL || ::GetObjectType(hPen) == OBJ_PEN);
 //#endif // _WIN32_WCE
-		gdi32::SelectObject(self.hdc, hPen) as HPEN
+		gdi32::SelectObject(self.hdc, hPen as HGDIOBJ) as HPEN
 	}
 
 	pub fn SelectBrush(&self,hBrush: HBRUSH)->HBRUSH {
 		self.assert_dc();
-		debug_assert!(hBrush == 0 as HBRUSH || gdi32::GetObjectType(hBrush) == OBJ_BRUSH);
-		gdi32::SelectObject(self.hdc, hBrush) as HBRUSH
+		debug_assert!(hBrush == 0 as HBRUSH || gdi32::GetObjectType(hBrush as HGDIOBJ) == OBJ_BRUSH);
+		gdi32::SelectObject(self.hdc, hBrush as HGDIOBJ) as HBRUSH
 	}
 
 	pub fn SelectFont(&self,hFont: HFONT)->HFONT {
 		self.assert_dc();
-		debug_assert!(hFont == 0 as HFONT || gdi32::GetObjectType(hFont) == OBJ_FONT);
-		gdi32::SelectObject(self.hdc, hFont) as HFONT
+		debug_assert!(hFont == 0 as HFONT || gdi32::GetObjectType(hFont as HGDIOBJ) == OBJ_FONT);
+		gdi32::SelectObject(self.hdc, hFont as HGDIOBJ) as HFONT
 	}
 
 	pub fn SelectBitmap(&self,hBitmap: HBITMAP)->HBITMAP {
 		self.assert_dc();
-		debug_assert!(hBitmap == 0 as HBITMAP || gdi32::GetObjectType(hBitmap) == OBJ_BITMAP);
-		gdi32::SelectObject(self.hdc, hBitmap) as HBITMAP
+		debug_assert!(hBitmap == 0 as HBITMAP || gdi32::GetObjectType(hBitmap as HGDIOBJ) == OBJ_BITMAP);
+		gdi32::SelectObject(self.hdc, hBitmap as HGDIOBJ) as HBITMAP
 	}
 
 	pub fn SelectRgn(&self,hRgn: HRGN)->c_int {
 		self.assert_dc();
-		debug_assert!(hRgn == 0 as HRGN || gdi32::GetObjectType(hRgn) == OBJ_REGION);
-		PtrToInt(gdi32::SelectObject(self.hdc, hRgn))
+		debug_assert!(hRgn == 0 as HRGN || gdi32::GetObjectType(hRgn as HGDIOBJ) == OBJ_REGION);
+		PtrToInt(gdi32::SelectObject(self.hdc, hRgn as HGDIOBJ))
 	}
 
 // Type-safe selection helpers for stock objects
@@ -397,20 +400,23 @@ impl cdc_inner {
 //#endif // !_WIN32_WCE
 
 	// Viewport Origin
-	pub fn SetViewportOrg(&self,x: c_int,y: c_int,mut lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
+	pub fn SetViewportOrg(&self,x: c_int,y: c_int, lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::SetViewportOrgEx(self.hdc, x, y, lpPoint)
+		let p = extract_opt_by_null!(lpPoint,LPPOINT);
+		gdi32::SetViewportOrgEx(self.hdc, x, y, p)
 	}
 
-	pub fn SetViewportOrg_point(&self,point: POINT,mut lpPointRet: Option<LPPOINT> /*=NULL*/)->BOOL {
+	pub fn SetViewportOrg_point(&self,point: POINT, lpPointRet: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
+		//let p = extract_opt_by_null!(lpPointRet,LPPOINT);
 		self.SetViewportOrg(point.x, point.y, lpPointRet)
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn OffsetViewportOrg(&self,nWidth: c_int,nHeight: c_int,mut lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
+	pub fn OffsetViewportOrg(&self,nWidth: c_int,nHeight: c_int, lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::OffsetViewportOrgEx(self.hdc, nWidth, nHeight, lpPoint)
+		let p = extract_opt_by_null!(lpPoint,LPPOINT);
+		gdi32::OffsetViewportOrgEx(self.hdc, nWidth, nHeight, p)
 	}
 
 	// Viewport Extent
@@ -419,19 +425,22 @@ impl cdc_inner {
 		gdi32::GetViewportExtEx(self.hdc, lpSize)
 	}
 
-	pub fn SetViewportExt(&self,x: c_int,y: c_int,mut lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
+	pub fn SetViewportExt(&self,x: c_int,y: c_int, lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::SetViewportExtEx(self.hdc, x, y, lpSize)
+		let sz = extract_opt_by_null!(lpSize,LPSIZE);
+		gdi32::SetViewportExtEx(self.hdc, x, y, sz)
 	}
 
-	pub fn SetViewportExt_size(&self,size: SIZE,mut lpSizeRet: Option<LPSIZE> /*=NULL*/)->BOOL {
+	pub fn SetViewportExt_size(&self,size: SIZE, lpSizeRet: Option<LPSIZE> /*=NULL*/)->BOOL {
 		self.assert_dc();
+		//let sz = extract_opt_by_null!(lpSizeRet,LPSIZE);
 		self.SetViewportExt(size.cx, size.cy, lpSizeRet)
 	}
 
-	pub fn ScaleViewportExt(&self,xNum: c_int,xDenom: c_int,yNum: c_int,yDenom: c_int,mut lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
+	pub fn ScaleViewportExt(&self,xNum: c_int,xDenom: c_int,yNum: c_int,yDenom: c_int, lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::ScaleViewportExtEx(self.hdc, xNum, xDenom, yNum, yDenom, lpSize)
+		let sz = extract_opt_by_null!(lpSize,LPSIZE);
+		gdi32::ScaleViewportExtEx(self.hdc, xNum, xDenom, yNum, yDenom, sz)
 	}
 //#endif // !_WIN32_WCE
 
@@ -442,19 +451,22 @@ impl cdc_inner {
 		gdi32::GetWindowOrgEx(self.hdc, lpPoint)
 	}
 
-	pub fn SetWindowOrg(&self,x: c_int,y: c_int,mut lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
+	pub fn SetWindowOrg(&self,x: c_int,y: c_int, lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::SetWindowOrgEx(self.hdc, x, y, lpPoint)
+		let p = extract_opt_by_null!(lpPoint,LPPOINT);
+		gdi32::SetWindowOrgEx(self.hdc, x, y, p)
 	}
 
-	pub fn SetWindowOrg_point(&self,point: POINT,mut lpPointRet: Option<LPPOINT> /*=NULL*/)->BOOL {
+	pub fn SetWindowOrg_point(&self,point: POINT, lpPointRet: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
+		//let p = extract_opt_by_null!(lpPointRet,LPPOINT);
 		self.SetWindowOrg(point.x, point.y, lpPointRet)
 	}
 
-	pub fn OffsetWindowOrg(&self,nWidth: c_int,nHeight: c_int,mut lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
+	pub fn OffsetWindowOrg(&self,nWidth: c_int,nHeight: c_int, lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::OffsetWindowOrgEx(self.hdc, nWidth, nHeight, lpPoint)
+		let p = extract_opt_by_null!(lpPoint,LPPOINT);
+		gdi32::OffsetWindowOrgEx(self.hdc, nWidth, nHeight, p)
 	}
 
 	// Window extent
@@ -463,26 +475,30 @@ impl cdc_inner {
 		gdi32::GetWindowExtEx(self.hdc, lpSize)
 	}
 
-	pub fn SetWindowExt(&self,x: c_int,y: c_int,mut lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
+	pub fn SetWindowExt(&self,x: c_int,y: c_int, lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::SetWindowExtEx(self.hdc, x, y, lpSize)
+		let sz = extract_opt_by_null!(lpSize,LPSIZE);
+		gdi32::SetWindowExtEx(self.hdc, x, y, sz)
 	}
 
-	pub fn SetWindowExt_size(&self,size: SIZE,mut lpSizeRet: Option<LPSIZE> /*=NULL*/)->BOOL {
+	pub fn SetWindowExt_size(&self,size: SIZE, lpSizeRet: Option<LPSIZE> /*=NULL*/)->BOOL {
 		self.assert_dc();
+		//let sz = extract_opt_by_null!(lpSizeRet,LPSIZE);
 		self.SetWindowExt(size.cx, size.cy, lpSizeRet)
 	}
 
-	pub fn ScaleWindowExt(&self,xNum: c_int,xDenom: c_int,yNum: c_int,yDenom: c_int,mut lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
+	pub fn ScaleWindowExt(&self,xNum: c_int,xDenom: c_int,yNum: c_int,yDenom: c_int, lpSize: Option<LPSIZE> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::ScaleWindowExtEx(self.hdc, xNum, xDenom, yNum, yDenom, lpSize)
+		let sz = extract_opt_by_null!(lpSize,LPSIZE);
+		gdi32::ScaleWindowExtEx(self.hdc, xNum, xDenom, yNum, yDenom, sz)
 	}
 
 // Coordinate Functions
 	/// for points,overload function
-	pub fn DPtoLP(&self,lpPoints: LPPOINT,mut nCount: Option<c_int> /*=1*/)->BOOL {
+	pub fn DPtoLP(&self,lpPoints: LPPOINT, nCount: Option<c_int> /*=1*/)->BOOL {
 		self.assert_dc();
-		gdi32::DPtoLP(self.hdc, lpPoints, nCount)
+		let n = extract_opt_by_default!(-1,nCount,c_int);
+		gdi32::DPtoLP(self.hdc, lpPoints, n)
 	}
 
 	/// origin name :DPtoLP,overload function ,used for RECT 
@@ -493,23 +509,24 @@ impl cdc_inner {
 
 	/// origin name :DPtoLP,overload function ,used for SIZE 
 	pub fn DPtoLP_Size(&self,lpSize: LPSIZE)->BOOL {
-		let sizeWinExt = SIZE{cx: 0, cy: 0};
-		if self.GetWindowExt(&sizeWinExt) == FALSE {
+		let mut sizeWinExt = SIZE{cx: 0, cy: 0};
+		if self.GetWindowExt(&mut sizeWinExt) == FALSE {
 			return FALSE;
 		}
 		let sizeVpExt = SIZE{cx: 0, cy: 0};
-		if self.GetViewportExt(&sizeVpExt) == FALSE {
+		if self.GetViewportExt(&mut sizeVpExt) == FALSE {
 			return FALSE;
 		}
-		lpSize.cx = kernel32::MulDiv(lpSize.cx, abs(sizeWinExt.cx), abs(sizeVpExt.cx));
-		lpSize.cy = kernel32::MulDiv(lpSize.cy, abs(sizeWinExt.cy), abs(sizeVpExt.cy));
+		(*lpSize).cx = kernel32::MulDiv((*lpSize).cx, abs(sizeWinExt.cx), abs(sizeVpExt.cx));
+		(*lpSize).cy = kernel32::MulDiv((*lpSize).cy, abs(sizeWinExt.cy), abs(sizeVpExt.cy));
 		TRUE
 	}
 
 	/// for points,overload function
-	pub fn LPtoDP(&self,lpPoints: LPPOINT,mut nCount: Option<c_int> /*=1*/)->BOOL {
+	pub fn LPtoDP(&self,lpPoints: LPPOINT, nCount: Option<c_int> /*=1*/)->BOOL {
 		self.assert_dc();
-		gdi32::LPtoDP(self.hdc, lpPoints, nCount)
+		let n = extract_opt_by_default!(1,nCount,c_int);
+		gdi32::LPtoDP(self.hdc, lpPoints, n)
 	}
 
 	/// origin name :LPtoDP,overload function ,used for RECT 
@@ -520,16 +537,16 @@ impl cdc_inner {
 
 	/// origin name :LPtoDP,overload function ,used for SIZE 
 	pub fn LPtoDP_Size(&self,lpSize: LPSIZE)->BOOL {
-		let sizeWinExt = SIZE{cx: 0, cy: 0};
-		if self.GetWindowExt(&sizeWinExt) == FALSE {
+		let mut sizeWinExt = SIZE{cx: 0, cy: 0};
+		if self.GetWindowExt(&mut sizeWinExt) == FALSE {
 			return FALSE;
 		}
 		let sizeVpExt = SIZE{cx: 0, cy: 0};
-		if self.GetViewportExt(&sizeVpExt) == FALSE {
+		if self.GetViewportExt(&mut sizeVpExt) == FALSE {
 			return FALSE;
 		}
-		lpSize.cx = kernel32::MulDiv(lpSize.cx, abs(sizeVpExt.cx), abs(sizeWinExt.cx));
-		lpSize.cy = kernel32::MulDiv(lpSize.cy, abs(sizeVpExt.cy), abs(sizeWinExt.cy));
+		(*lpSize).cx = kernel32::MulDiv((*lpSize).cx, abs(sizeVpExt.cx), abs(sizeWinExt.cx));
+		(*lpSize).cy = kernel32::MulDiv((*lpSize).cy, abs(sizeVpExt.cy), abs(sizeWinExt.cy));
 		TRUE
 	}
 
@@ -554,8 +571,8 @@ impl cdc_inner {
 			let cxPerInch = self.GetDeviceCaps(LOGPIXELSX);
 			let cyPerInch = self.GetDeviceCaps(LOGPIXELSY);
 			debug_assert!(cxPerInch != 0 && cyPerInch != 0);
-			lpSize.cx = kernel32::MulDiv(lpSize.cx, HIMETRIC_INCH, cxPerInch);
-			lpSize.cy = kernel32::MulDiv(lpSize.cy, HIMETRIC_INCH, cyPerInch);
+			(*lpSize).cx = kernel32::MulDiv((*lpSize).cx, HIMETRIC_INCH, cxPerInch);
+			(*lpSize).cy = kernel32::MulDiv((*lpSize).cy, HIMETRIC_INCH, cyPerInch);
 		}
 	}
 
@@ -575,8 +592,8 @@ impl cdc_inner {
 			let cxPerInch = self.GetDeviceCaps(LOGPIXELSX);
 			let cyPerInch = self.GetDeviceCaps(LOGPIXELSY);
 			debug_assert!(cxPerInch != 0 && cyPerInch != 0);
-			lpSize.cx = kernel32::MulDiv(lpSize.cx, cxPerInch, HIMETRIC_INCH);
-			lpSize.cy = kernel32::MulDiv(lpSize.cy, cyPerInch, HIMETRIC_INCH);
+			(*lpSize).cx = kernel32::MulDiv((*lpSize).cx, cxPerInch, HIMETRIC_INCH);
+			(*lpSize).cy = kernel32::MulDiv((*lpSize).cy, cyPerInch, HIMETRIC_INCH);
 		}
 	}
 
@@ -657,7 +674,10 @@ impl cdc_inner {
 
 	pub fn ExcludeClipRect_rect(&self,lpRect: LPCRECT)->c_int {
 		self.assert_dc();
-		gdi32::ExcludeClipRect(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom)
+		unsafe{
+			let p = &*lpRect;
+			gdi32::ExcludeClipRect(self.hdc, p.left, p.top, p.right, p.bottom)
+		}
 	}
 
 //#ifndef _WIN32_WCE
@@ -674,7 +694,10 @@ impl cdc_inner {
 
 	pub fn IntersectClipRect_rect(&self,lpRect: LPCRECT)->c_int {
 		self.assert_dc();
-		gdi32::IntersectClipRect(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom)
+		unsafe{
+			let p = &*lpRect;
+			gdi32::IntersectClipRect(self.hdc, p.left, p.top, p.right, p.bottom)
+		}
 	}
 
 //#ifndef _WIN32_WCE
@@ -708,11 +731,13 @@ impl cdc_inner {
 
 	pub fn MoveTo(&self,x: c_int,y: c_int,mut lpPoint: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		gdi32::MoveToEx(self.hdc, x, y, lpPoint)
+		let p = extract_opt_by_null!(lpPoint,LPPOINT);
+		gdi32::MoveToEx(self.hdc, x, y, p)
 	}
 
 	pub fn MoveTo_point(&self,point: POINT,mut lpPointRet: Option<LPPOINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
+		//let p = extract_opt_by_null!(lpPointRet,LPPOINT);
 		self.MoveTo(point.x, point.y, lpPointRet)
 	}
 
@@ -735,9 +760,10 @@ impl cdc_inner {
 
 	pub fn Arc_rect(&self,lpRect: LPCRECT,ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		return gdi32::Arc(self.hdc, lpRect.left, lpRect.top,
-			lpRect.right, lpRect.bottom, ptStart.x, ptStart.y,
-			ptEnd.x, ptEnd.y);
+		unsafe{
+			let p = &*lpRect;
+			gdi32::Arc(self.hdc, p.left, p.top,p.right, p.bottom, ptStart.x, ptStart.y,ptEnd.x, ptEnd.y)
+		}
 	}
 //#endif // !_WIN32_WCE
 
@@ -749,7 +775,7 @@ impl cdc_inner {
 //#ifndef _WIN32_WCE
 	pub fn AngleArc(&self,x: c_int,y: c_int,nRadius: c_int,fStartAngle: FLOAT,fSweepAngle: FLOAT)->BOOL {
 		self.assert_dc();
-		gdi32::AngleArc(self.hdc, x, y, nRadius, fStartAngle, fSweepAngle)
+		gdi32::AngleArc(self.hdc, x, y, nRadius as DWORD, fStartAngle, fSweepAngle)
 	}
 
 	pub fn ArcTo(&self,x1: c_int,y1: c_int,x2: c_int,y2: c_int,x3: c_int,y3: c_int,x4: c_int,y4: c_int)->BOOL {
@@ -759,8 +785,10 @@ impl cdc_inner {
 
 	pub fn ArcTo_rect(&self,lpRect: LPCRECT,ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		return self.ArcTo(lpRect.left, lpRect.top, lpRect.right,
-		lpRect.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y);
+		unsafe{
+			let p = &*lpRect;
+			self.ArcTo(p.left, p.top, p.right,p.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y)
+		}
 	}
 
 	pub fn GetArcDirection (&self)->c_int {
@@ -780,22 +808,22 @@ impl cdc_inner {
 
 	pub fn PolylineTo(&self,lpPoints: &POINT,nCount: c_int)->BOOL {
 		self.assert_dc();
-		gdi32::PolylineTo(self.hdc, lpPoints, nCount)
+		gdi32::PolylineTo(self.hdc, lpPoints, nCount as DWORD)
 	}
 
 	pub fn PolyPolyline(&self, lpPoints: &POINT, lpPolyPoints: &DWORD, nCount: c_int)->BOOL {
 		self.assert_dc();
-		gdi32::PolyPolyline(self.hdc, lpPoints, lpPolyPoints, nCount)
+		gdi32::PolyPolyline(self.hdc, lpPoints, lpPolyPoints, nCount as DWORD)
 	}
 
 	pub fn PolyBezier(&self,lpPoints: &POINT,nCount: c_int)->BOOL {
 		self.assert_dc();
-		gdi32::PolyBezier(self.hdc, lpPoints, nCount)
+		gdi32::PolyBezier(self.hdc, lpPoints, nCount as DWORD)
 	}
 
 	pub fn PolyBezierTo(&self,lpPoints: &POINT,nCount: c_int)->BOOL {
 		self.assert_dc();
-		gdi32::PolyBezierTo(self.hdc, lpPoints, nCount)
+		gdi32::PolyBezierTo(self.hdc, lpPoints, nCount as DWORD)
 	}
 //#endif // !_WIN32_WCE
 
@@ -846,43 +874,55 @@ impl cdc_inner {
 //#endif // _WIN32_WCE
 	}
 
-	pub fn DrawIconEx(&self,x: c_int,y: c_int,hIcon: HICON,cxWidth: c_int,cyWidth: c_int,mut uStepIfAniCur: Option<UINT> /*=0*/,mut hbrFlickerFreeDraw: Option<HBRUSH> /*=NULL*/,mut uFlags: Option<UINT> /*=DI_NORMAL*/)->BOOL {
+	pub fn DrawIconEx(&self,x: c_int,y: c_int,hIcon: HICON,cxWidth: c_int,cyWidth: c_int, uStepIfAniCur: Option<UINT> /*=0*/, hbrFlickerFreeDraw: Option<HBRUSH> /*=NULL*/, uFlags: Option<UINT> /*=DI_NORMAL*/)->BOOL {
 		self.assert_dc();
-		user32::DrawIconEx(self.hdc, x, y, hIcon, cxWidth, cyWidth, uStepIfAniCur, hbrFlickerFreeDraw, uFlags)
+		let s = extract_opt_by_null!(uStepIfAniCur,UINT);
+		let h = extract_opt_by_null!(hbrFlickerFreeDraw,HBRUSH);
+		let f = extract_opt_by_default!(DI_NORMAL,uFlags,UINT);
+		user32::DrawIconEx(self.hdc, x, y, hIcon, cxWidth, cyWidth, s, h, f)
 	}
 
-	pub fn DrawIconEx_point(&self,point: POINT,hIcon: HICON,size: SIZE,mut uStepIfAniCur: Option<UINT> /*=0*/,mut hbrFlickerFreeDraw: Option<HBRUSH> /*=NULL*/,mut uFlags: Option<UINT> /*=DI_NORMAL*/)->BOOL {
+	pub fn DrawIconEx_point(&self,point: POINT,hIcon: HICON,size: SIZE, uStepIfAniCur: Option<UINT> /*=0*/, hbrFlickerFreeDraw: Option<HBRUSH> /*=NULL*/, uFlags: Option<UINT> /*=DI_NORMAL*/)->BOOL {
 		self.assert_dc();
-		user32::DrawIconEx(self.hdc, point.x, point.y, hIcon, size.cx, size.cy, uStepIfAniCur, hbrFlickerFreeDraw, uFlags)
+		let s = extract_opt_by_null!(uStepIfAniCur,UINT);
+		let h = extract_opt_by_null!(hbrFlickerFreeDraw,HBRUSH);
+		let f = extract_opt_by_default!(DI_NORMAL,uFlags,UINT);
+		user32::DrawIconEx(self.hdc, point.x, point.y, hIcon, size.cx, size.cy, s, h, f)
 	}
 
 //#ifndef _WIN32_WCE
-	pub fn DrawState_bitmap(&self,pt: POINT,size: SIZE,hBitmap: HBITMAP,nFlags: UINT,mut hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
+	pub fn DrawState_bitmap(&self,pt: POINT,size: SIZE,hBitmap: HBITMAP,nFlags: UINT, hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		user32::DrawStateW(self.hdc, hBrush, 0 as DRAWSTATEPROC, hBitmap as LPARAM, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_BITMAP)
+		let h = extract_opt_by_null!(hBrush,HBRUSH);
+		user32::DrawStateW(self.hdc, h, None, hBitmap as LPARAM, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_BITMAP)
 	}
 
-	pub fn DrawState(&self,pt: POINT,size: SIZE,hIcon: HICON,nFlags: UINT,mut hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
+	pub fn DrawState(&self,pt: POINT,size: SIZE,hIcon: HICON,nFlags: UINT, hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		user32::DrawStateW(self.hdc, hBrush, 0 as DRAWSTATEPROC, hIcon as LPARAM, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_ICON)
+		let h = extract_opt_by_null!(hBrush,HBRUSH);
+		user32::DrawStateW(self.hdc, h, None, hIcon as LPARAM, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_ICON)
 	}
 
-	pub fn DrawState_text(&self,pt: POINT,size: SIZE,lpszText: &str,mut nFlags: UINT,mut bPrefixText: Option<BOOL> /*=TRUE*/,mut nTextLen: Option<c_int> /*=0*/,mut hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
+	pub fn DrawState_text(&self,pt: POINT,size: SIZE,lpszText: &str,mut nFlags: UINT, bPrefixText: Option<BOOL> /*=TRUE*/, nTextLen: Option<c_int> /*=0*/, hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
 		self.assert_dc();
 		let s = lpszText.to_c_u16();
-		if bPrefixText > 0 {
+		let b = extract_opt_by_default!(TRUE,bPrefixText,BOOL);
+		if b > 0 {
 			nFlags |= DST_PREFIXTEXT;
 		}else{
 			nFlags |= DST_TEXT;
 		}
 		
+		let n = extract_opt_by_null!(nTextLen,c_int);
+		let h = extract_opt_by_null!(hBrush,HBRUSH);
 		//nFlags | (bPrefixText ? DST_PREFIXTEXT : DST_TEXT)
-		user32::DrawStateW(self.hdc, hBrush, 0 as DRAWSTATEPROC, s.as_ptr() as LPARAM, nTextLen as WPARAM, pt.x, pt.y, size.cx, size.cy, nFlags)
+		user32::DrawStateW(self.hdc, h, None, s.as_ptr() as LPARAM, n as WPARAM, pt.x, pt.y, size.cx, size.cy, nFlags)
 	}
 
-	pub fn DrawState_proc(&self,pt: POINT,size: SIZE,lpDrawProc: DRAWSTATEPROC,lData: LPARAM,nFlags: UINT,mut hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
+	pub fn DrawState_proc(&self,pt: POINT,size: SIZE,lpDrawProc: DRAWSTATEPROC,lData: LPARAM,nFlags: UINT, hBrush: Option<HBRUSH> /*=NULL*/)->BOOL {
 		self.assert_dc();
-		user32::DrawStateW(self.hdc, hBrush, lpDrawProc, lData, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_COMPLEX)
+		let h = extract_opt_by_null!(hBrush,HBRUSH);
+		user32::DrawStateW(self.hdc, h, lpDrawProc, lData, 0, pt.x, pt.y, size.cx, size.cy, nFlags | DST_COMPLEX)
 	}
 //#endif // !_WIN32_WCE
 
@@ -895,7 +935,10 @@ impl cdc_inner {
 
 	pub fn Chord_rect(&self,lpRect: LPCRECT,ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		gdi32::Chord(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y)
+		unsafe{
+			let p = &*lpRect;
+			gdi32::Chord(self.hdc, p.left, p.top, p.right, p.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y)
+		}
 	}
 //#endif // !_WIN32_WCE
 
@@ -911,7 +954,10 @@ impl cdc_inner {
 
 	pub fn Ellipse_rect(&self,lpRect: LPCRECT)->BOOL {
 		self.assert_dc();
-		gdi32::Ellipse(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom)
+		unsafe{
+			let p = &*lpRect;
+			gdi32::Ellipse(self.hdc, p.left, p.top, p.right, p.bottom)
+		}
 	}
 
 //#ifndef _WIN32_WCE
@@ -922,7 +968,10 @@ impl cdc_inner {
 
 	pub fn Pie_rect(&self,lpRect: LPCRECT,ptStart: POINT,ptEnd: POINT)->BOOL {
 		self.assert_dc();
-		gdi32::Pie(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y)
+		unsafe{
+			let p = &*lpRect;
+			gdi32::Pie(self.hdc, p.left, p.top, p.right, p.bottom, ptStart.x, ptStart.y, ptEnd.x, ptEnd.y)
+		}
 	}
 //#endif // !_WIN32_WCE
 
@@ -934,7 +983,7 @@ impl cdc_inner {
 //#ifndef _WIN32_WCE
 	pub fn PolyPolygon(&self,lpPoints: &POINT,lpPolyCounts: &c_int,nCount: c_int)->BOOL {
 		self.assert_dc();
-		gdi32::PolyPolygon(self.hdc, lpPoints, lpPolyCounts, nCount)
+		gdi32::PolyPolygon(self.hdc, lpPoints, lpPolyCounts, nCount as DWORD)
 	}
 //#endif // !_WIN32_WCE
 
@@ -945,7 +994,10 @@ impl cdc_inner {
 
 	pub fn Rectangle_rect(&self,lpRect: LPCRECT)->BOOL {
 		self.assert_dc();
-		gdi32::Rectangle(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom)
+		unsafe{
+			let p = &*lpRect;
+			gdi32::Rectangle(self.hdc, p.left, p.top, p.right, p.bottom)
+		}
 	}
 
 	pub fn RoundRect(&self,x1: c_int,y1: c_int,x2: c_int,y2: c_int,x3: c_int,y3: c_int)->BOOL {
@@ -955,7 +1007,10 @@ impl cdc_inner {
 
 	pub fn RoundRect_rect(&self,lpRect: LPCRECT,point: POINT)->BOOL {
 		self.assert_dc();
-		gdi32::RoundRect(self.hdc, lpRect.left, lpRect.top, lpRect.right, lpRect.bottom, point.x, point.y)
+		unsafe{
+			let p = &*lpRect;
+			gdi32::RoundRect(self.hdc, p.left, p.top, p.right, p.bottom, point.x, point.y)
+		}
 	}
 
 // Bitmap Functions
@@ -1042,7 +1097,7 @@ impl cdc_inner {
 //#endif // _WIN32_WCE
 
 //#if (!defined(_WIN32_WCE) || (_WIN32_WCE >= 420))
-	pub fn GradientFill (&self,pVertices: &TRIVERTEX,nVertices: DWORD,pMeshElements: LPVOID,nMeshElements: DWORD,dwMode: DWORD)->BOOL {
+	pub fn GradientFill (&self,pVertices: &mut TRIVERTEX,nVertices: DWORD,pMeshElements: LPVOID,nMeshElements: DWORD,dwMode: DWORD)->BOOL {
 		self.assert_dc();
 		gdi32::GradientFill(self.hdc, pVertices, nVertices, pMeshElements, nMeshElements, dwMode)
 	}
@@ -1050,7 +1105,7 @@ impl cdc_inner {
 	pub fn GradientFillRect (&self, rect: &RECT, clr1: COLORREF, clr2: COLORREF, mut bHorizontal: bool)->BOOL {
 		self.assert_dc();
 
-		let mut arrTvx = [TRIVERTEX::default(),2];
+		let mut arrTvx:[TRIVERTEX; 2] = unsafe {mem::zeroed()};//[mem::zeroed(); 2];
 
 		arrTvx[0].x = rect.left;
 		arrTvx[0].y = rect.top;
@@ -1066,7 +1121,7 @@ impl cdc_inner {
 		arrTvx[1].Blue = MAKEWORD(0, GetBValue(clr2));
 		arrTvx[1].Alpha = 0;
 
-		let gr = GRADIENT_RECT{UpperLeft: 0, LowerRight: 1};
+		let mut gr = GRADIENT_RECT{UpperLeft: 0, LowerRight: 1};
 
 		let h = if bHorizontal {
 			GRADIENT_FILL_RECT_H
@@ -1074,7 +1129,7 @@ impl cdc_inner {
 			GRADIENT_FILL_RECT_V
 		};
 		//bHorizontal ? GRADIENT_FILL_RECT_H : GRADIENT_FILL_RECT_V
-		gdi32::GradientFill(self.hdc, arrTvx, 2, &gr, 1, h)
+		gdi32::GradientFill(self.hdc, &mut arrTvx[0], 2, &mut gr as *mut _ as PVOID, 1, h)
 	}
 //#endif // !defined(_WIN32_WCE) || (_WIN32_WCE >= 420)
 
@@ -1202,33 +1257,34 @@ impl cdc_inner {
 // Text Functions
 //#ifndef _WIN32_WCE
 	//pub fn TextOut(&self,x: c_int,y: c_int,lpszString: LPCTSTR,mut nCount: Option<c_int> /*= -1*/)->BOOL {
-	pub fn TextOut(&self,x: c_int,y: c_int,lpszString: &str,mut nCount: Option<c_int> /*= -1*/)->BOOL {
+	pub fn TextOut(&self,x: c_int,y: c_int,lpszString: &str, nCount: Option<c_int> /*= -1*/)->BOOL {
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
-		let n = get_default!(s.len(),nCount,UINT);
+		//let l = s.len();
+		let n = extract_opt_by_default!(s.len(),nCount,c_int);
 		gdi32::TextOutW(self.hdc, x, y, s.as_ptr(), n)
 	}
 //#endif // !_WIN32_WCE
 
 	//pub fn ExtTextOut(&self,x: c_int,y: c_int,nOptions: UINT,lpRect: LPCRECT,lpszString: LPCTSTR,mut nCount: Option<UINT> /*= -1*/,mut lpDxWidths: Option<LPINT> /*=NULL*/)->BOOL {
-	pub fn ExtTextOut(&self,x: c_int,y: c_int,nOptions: UINT,lpRect: LPCRECT,lpszString: &str,mut nCount: Option<UINT> /*= -1*/, lpDxWidths: Option<LPINT> /*=NULL*/)->BOOL {		
+	pub fn ExtTextOut(&self,x: c_int,y: c_int,nOptions: UINT,lpRect: LPCRECT,lpszString: &str, nCount: Option<UINT> /*= -1*/, lpDxWidths: Option<LPINT> /*=NULL*/)->BOOL {		
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
 
-		let n = get_default!(s.len(),nCount,UINT);
+		let n = extract_opt_by_default!(s.len(),nCount,UINT);
 		// let n = if let Some(n1) = nCount {
 		// 	n1
 		// }else{
 		// 	s.len() as UINT
 		// };
 
-		let w = get_null_default!(lpDxWidths,LPINT);
+		let w = extract_opt_by_null!(lpDxWidths,LPINT);
 		gdi32::ExtTextOutW(self.hdc, x, y, nOptions, lpRect, s.as_ptr(), n, w)
 	}
 
 //#ifndef _WIN32_WCE
 	//pub fn TabbedTextOut(&self,x: c_int,y: c_int,lpszString: LPCTSTR,mut nCount: Option<c_int> /*= -1*/,mut nTabPositions: Option<c_int> /*=0*/,mut lpnTabStopPositions: Option<LPINT> /*=NULL*/,mut nTabOrigin: Option<c_int> /*=0*/)->SIZE {
-	pub fn TabbedTextOut(&self,x: c_int,y: c_int,lpszString: &str,mut nCount: Option<c_int> /*= -1*/,mut nTabPositions: Option<c_int> /*=0*/,mut lpnTabStopPositions: Option<LPINT> /*=NULL*/,mut nTabOrigin: Option<c_int> /*=0*/)->SIZE {
+	pub fn TabbedTextOut(&self,x: c_int,y: c_int,lpszString: &str, nCount: Option<c_int> /*= -1*/, nTabPositions: Option<c_int> /*=0*/, lpnTabStopPositions: Option<LPINT> /*=NULL*/, nTabOrigin: Option<c_int> /*=0*/)->SIZE {
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
 		// let n = if let Some(n1) = nCount {
@@ -1236,8 +1292,11 @@ impl cdc_inner {
 		// }else{
 		// 	s.len() as c_int
 		// };
-		let n = get_default!(s.len(),nCount,c_int);
-		let lRes = user32::TabbedTextOutW(self.hdc, x, y, s.as_ptr(), n, nTabPositions, lpnTabStopPositions, nTabOrigin) as LONG;
+		let n = extract_opt_by_default!(s.len(),nCount,c_int);
+		let pos = extract_opt_by_null!(nTabPositions,c_int);
+		let stop_pos = extract_opt_by_null!(lpnTabStopPositions,LPINT);
+		let org = extract_opt_by_null!(nTabOrigin,c_int);
+		let lRes = user32::TabbedTextOutW(self.hdc, x, y, s.as_ptr(), n, pos, stop_pos, org) as LPARAM;
 		SIZE{cx: GET_X_LPARAM(lRes), cy: GET_Y_LPARAM(lRes)}
 	}
 //#endif // !_WIN32_WCE
@@ -1263,7 +1322,7 @@ impl cdc_inner {
 		self.assert_dc();
 		let s = lpstrText.to_c_u16();
 
-		let p = get_null_default!(lpDTParams,LPDRAWTEXTPARAMS);
+		let p = extract_opt_by_null!(lpDTParams,LPDRAWTEXTPARAMS);
 		// let p = if let Some(p1) = lpDTParams {
 		// 	p1
 		// }else {
@@ -1274,6 +1333,7 @@ impl cdc_inner {
 //#endif // !_WIN32_WCE
 
 //#if (_WIN32_WINNT >= 0x0501)
+	/*
 	pub fn DrawShadowText(&self,lpstrText: LPCWSTR,cchText: c_int,lpRect: LPRECT,dwFlags: DWORD,clrText: COLORREF,clrShadow: COLORREF,xOffset: c_int,yOffset: c_int)->c_int {
 		self.assert_dc();
 		// This function is present only if comctl32.dll version 6 is loaded;
@@ -1286,6 +1346,8 @@ impl cdc_inner {
 		if hCommCtrlDLL != 0 as HMODULE {
 			//typedef c_int (WINAPI *PFN_DrawShadowText)(HDC hDC, LPCWSTR lpstrText, UINT cchText, LPRECT lpRect, DWORD dwFlags, COLORREF clrText, COLORREF clrShadow, c_int xOffset, c_int yOffset);
 			type PFN_DrawShadowText = fn(hDC: HDC, lpstrText: LPCWSTR, cchText: UINT, lpRect: LPRECT, dwFlags: DWORD, clrText: COLORREF, clrShadow: COLORREF, xOffset: c_int, yOffset: c_int)->c_int;
+			let pname = "DrawShadowText";
+
 			let pfnDrawShadowText = kernel32::GetProcAddress(hCommCtrlDLL, "DrawShadowText".as_ptr()) as PFN_DrawShadowText;
 			debug_assert!(pfnDrawShadowText != 0 as PFN_DrawShadowText);   // this function requires CommCtrl6
 			if pfnDrawShadowText != 0 as PFN_DrawShadowText {
@@ -1295,12 +1357,13 @@ impl cdc_inner {
 		}
 		nRet
 	}
+	*/
 //#endif // (_WIN32_WINNT >= 0x0501)
 
 	pub fn GetTextExtent(&self,lpszString: &str,mut nCount: c_int,lpSize: LPSIZE)->BOOL {
 		self.assert_dc();
 		if nCount == -1 {
-			nCount = lpszString.len();
+			nCount = lpszString.len() as c_int;
 		}
 		let s = lpszString.to_c_u16();
 
@@ -1310,8 +1373,8 @@ impl cdc_inner {
 	pub fn GetTextExtentExPoint(&self,lpszString: &str,cchString: c_int,lpSize: LPSIZE,nMaxExtent: c_int,lpnFit: Option<LPINT> /*=NULL*/, alpDx: Option<LPINT> /*=NULL*/)->BOOL {
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
-		let n = get_null_default!(lpnFit,LPINT);
-		let a = get_null_default!(alpDx,LPINT);
+		let n = extract_opt_by_null!(lpnFit,LPINT);
+		let a = extract_opt_by_null!(alpDx,LPINT);
 		gdi32::GetTextExtentExPointW(self.hdc, s.as_ptr(), cchString, nMaxExtent, n, a, lpSize)
 	}
 
@@ -1320,15 +1383,15 @@ impl cdc_inner {
 		self.assert_dc();
 		let s = lpszString.to_c_u16();
 
-		let c = get_default!(lpszString.len(),nCount,c_int);
-		let t = get_default!(0,nTabPositions,c_int);
-		let p = get_null_default!(lpnTabStopPositions,LPINT);
+		let c = extract_opt_by_default!(lpszString.len(),nCount,c_int);
+		let t = extract_opt_by_default!(0,nTabPositions,c_int);
+		let p = extract_opt_by_null!(lpnTabStopPositions,LPINT);
 		user32::GetTabbedTextExtentW(self.hdc, s.as_ptr(), c, t, p)
 	}
 
-	pub fn GrayString(&self,hBrush: HBRUSH,lpfnOutput: fn(HDC,LPARAM,c_int)->BOOL,lpData: LPARAM,nCount: c_int,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int)->BOOL {
+	pub fn GrayString(&self,hBrush: HBRUSH,lpfnOutput: GRAYSTRINGPROC,lpData: LPARAM,nCount: c_int,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int)->BOOL {
 		self.assert_dc();
-		user32::GrayStringW(self.hdc, hBrush, lpfnOutput as GRAYSTRINGPROC, lpData, nCount, x, y, nWidth, nHeight)
+		user32::GrayStringW(self.hdc, hBrush, lpfnOutput, lpData, nCount, x, y, nWidth, nHeight)
 	}
 //#endif // !_WIN32_WCE
 
@@ -1344,11 +1407,13 @@ impl cdc_inner {
 	}
 //#endif // !defined(_WIN32_WCE) || (_WIN32_WCE >= 400)
 
-	pub fn GetTextFace(&self,lpszFacename: &str,nCount: c_int) -> c_int {
-		self.assert_dc();
-		let s = lpszFacename.to_c_u16();
-		gdi32::GetTextFaceW(self.hdc, nCount, s.as_ptr())
-	}
+	// pub fn GetTextFace(&self,lpszFacename: &String,nCount: c_int) -> c_int {
+	// 	self.assert_dc();
+	// 	//let s = lpszFacename.to_c_u16();
+	// 	let v:[u16; 128];
+	// 	let l = gdi32::GetTextFaceW(self.hdc, nCount, v.as_mut_ptr());
+	// 	//lpszFacename.from
+	// }
 
 	pub fn GetTextFaceLen (&self) -> c_int {
 		self.assert_dc();
@@ -1476,7 +1541,7 @@ impl cdc_inner {
 
 	pub fn GetKerningPairs(&self,nPairs: c_int,lpkrnpair: LPKERNINGPAIR)->c_int {
 		self.assert_dc();
-		gdi32::GetKerningPairsW(self.hdc, nPairs, lpkrnpair)
+		gdi32::GetKerningPairsW(self.hdc, nPairs as DWORD, lpkrnpair) as c_int
 	}
 
 	pub fn GetOutlineTextMetrics(&self,cbData: UINT,lpotm: LPOUTLINETEXTMETRICW)->UINT {
@@ -1519,10 +1584,10 @@ impl cdc_inner {
 //#if !defined(_WIN32_WCE) || ((_WIN32_WCE >= 200) && defined(StartDoc))
 	pub fn StartDoc_name(&self,lpszDocName: &str)->c_int {
 	 	let s = lpszDocName.to_c_u16();
-		let mut di = DOCINFOW{cbSize: 0, lpszDocName: 0};
-		di.cbSize = ::std::mem::size_of::<DOCINFOW>();
+		let mut di: DOCINFOW = unsafe{mem::zeroed()};//DOCINFOW{cbSize: 0, lpszDocName: 0};
+		di.cbSize = ::std::mem::size_of::<DOCINFOW>() as i32;
 		di.lpszDocName = s.as_ptr();
-		self.StartDoc(&di)
+		self.StartDoc(&mut di)
 	}
 
 	pub fn StartDoc(&self,lpDocInfo: LPDOCINFOW)->c_int {
@@ -1540,9 +1605,9 @@ impl cdc_inner {
 		gdi32::EndPage(self.hdc)
 	}
 
-	pub fn SetAbortProc (&self,lpfn: fn(HDC,c_int)->BOOL )->c_int {
+	pub fn SetAbortProc (&self,lpfn: ABORTPROC )->c_int {
 		self.assert_dc();
-		gdi32::SetAbortProc(self.hdc, lpfn as ABORTPROC)
+		gdi32::SetAbortProc(self.hdc, lpfn)
 	}
 
 	pub fn AbortDoc (&self)->c_int {
@@ -1834,13 +1899,15 @@ impl cdc_inner {
 	pub fn FillSolidRect(&self,x: c_int,y: c_int,cx: c_int,cy: c_int,clr: COLORREF) {
 		self.assert_dc();
 
-		let rect = RECT{ x: x, y: y, cx: x + cx, cy: y + cy };
+		let rect = RECT{ left: x, top: y, right: x + cx, bottom: y + cy };
 		self.FillSolidRect_rect(&rect, clr);
 	}
 
 	pub fn Draw3dRect_rect(&self,lpRect: LPCRECT,clrTopLeft: COLORREF,clrBottomRight: COLORREF) {
-		self.Draw3dRect(lpRect.left, lpRect.top, lpRect.right - lpRect.left,
-			lpRect.bottom - lpRect.top, clrTopLeft, clrBottomRight);
+		unsafe{
+			let p = &*lpRect;
+			self.Draw3dRect(p.left, p.top, p.right - p.left, p.bottom - p.top, clrTopLeft, clrBottomRight);
+		}
 	}
 
 	pub fn Draw3dRect(&self,x: c_int,y: c_int,cx: c_int,cy: c_int,clrTopLeft: COLORREF,clrBottomRight: COLORREF) {
@@ -1866,7 +1933,7 @@ impl cdc_inner {
 
 	pub fn GetDIBColorTable(&self,uStartIndex: UINT,cEntries: UINT, pColors: &mut RGBQUAD)->UINT {
 		self.assert_dc();
-		gdi32::GetDIBColorTable(self.hdc, uStartIndex, cEntries, pColors)
+		gdi32::GetDIBColorTable(self.hdc, uStartIndex, cEntries, pColors as *mut RGBQUAD)
 	}
 
 	pub fn SetDIBColorTable(&self,uStartIndex: UINT,cEntries: UINT,pColors: &RGBQUAD)->UINT {
@@ -2043,16 +2110,16 @@ fn abs(i: c_int) ->c_int {
 }
 
 #[inline]
-fn GetRValue(rgb: COLORREF){
-	LOBYTE(rgb)
+fn GetRValue(rgb: COLORREF) -> u8 {
+	LOBYTE(rgb as WORD)
 }
 
 #[inline]
-fn GetGValue(rgb: COLORREF){
+fn GetGValue(rgb: COLORREF) -> u8 {
 	LOBYTE((rgb as WORD) >> 8)
 }
 
 #[inline]
-fn GetBValue(rgb: COLORREF){
-	LOBYTE(rgb>>16)
+fn GetBValue(rgb: COLORREF) -> u8 {
+	LOBYTE((rgb>>16) as WORD)
 }

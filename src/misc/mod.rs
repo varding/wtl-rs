@@ -3,4 +3,4 @@
 
 pub use self::wchar::ToCU16Str;
 
-mod wchar;
+pub mod wchar;
