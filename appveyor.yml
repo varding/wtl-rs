@@ -9,8 +9,7 @@ install:
   - rustc -V
   - cargo -V
 
-build:
-  - cargo build --verbose
+build: false
 
 test_script:
   - cargo test --verbose
