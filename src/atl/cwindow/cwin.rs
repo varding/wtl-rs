@@ -313,19 +313,10 @@ impl CWindow {
         }
     }
 
-    #[cfg(target_arch = "x86_64")]
     pub fn GetWindowLongPtr(&self, nIndex: c_int) -> LONG_PTR {
         self.assert_window();
         unsafe {
             user32::GetWindowLongPtrW(self.0, nIndex)
-        }
-    }
-
-    #[cfg(target_arch = "x86")]
-    pub fn GetWindowLongPtr(&self, nIndex: c_int) -> LONG_PTR {
-        self.assert_window();
-        unsafe {
-            user32::GetWindowLongW(self.0, nIndex)
         }
     }
 
@@ -336,19 +327,10 @@ impl CWindow {
         }
     }
 
-    #[cfg(target_arch = "x86_64")]
     pub fn SetWindowLongPtr(&self, nIndex: c_int, dwNewLong: LONG_PTR) -> LONG_PTR {
         self.assert_window();
         unsafe {
             user32::SetWindowLongPtrW(self.0, nIndex, dwNewLong)
-        }
-    }
-
-    #[cfg(target_arch = "x86")]
-    pub fn SetWindowLongPtr(&self, nIndex: c_int, dwNewLong: LONG_PTR) -> LONG_PTR {
-        self.assert_window();
-        unsafe {
-            user32::SetWindowLongW(self.0, nIndex, dwNewLong)
         }
     }
 
