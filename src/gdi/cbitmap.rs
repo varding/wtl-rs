@@ -1,28 +1,32 @@
 
 
+pub struct Inner {
+    bitmap: HBITMAP,
+}
 
-class CBitmapT
-{
-public:
-// Data members
-	HBITMAP m_hBitmap;
+// class CBitmapT
+// {
+// public:
+// // Data members
+// 	HBITMAP m_hBitmap;
 
-// Constructor/destructor/operators
-	CBitmapT(HBITMAP hBitmap = NULL) : m_hBitmap(hBitmap)
-	{ }
+// // Constructor/destructor/operators
+// 	CBitmapT(HBITMAP hBitmap = NULL) : m_hBitmap(hBitmap)
+// 	{ }
 
-	~CBitmapT()
-	{
-		if(t_bManaged && m_hBitmap != NULL)
-			DeleteObject();
-	}
+// 	~CBitmapT()
+// 	{
+// 		if(t_bManaged && m_hBitmap != NULL)
+// 			DeleteObject();
+// 	}
 
-	CBitmapT<t_bManaged>& operator =(HBITMAP hBitmap)
-	{
-		Attach(hBitmap);
-		return *this;
-	}
-
+// 	CBitmapT<t_bManaged>& operator =(HBITMAP hBitmap)
+// 	{
+// 		Attach(hBitmap);
+// 		return *this;
+// 	}
+impl Inner {
+	
 	void Attach(HBITMAP hBitmap)
 	{
 		if(t_bManaged && m_hBitmap != NULL&& m_hBitmap != hBitmap)

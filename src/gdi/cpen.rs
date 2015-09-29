@@ -1,104 +1,211 @@
-class CPenT
-{
-public:
-// Data members
-	HPEN m_hPen;
+#![allow(non_snake_case, dead_code)]
+use winapi::*;
+use gdi32;
+use std::mem;
+use std::ops::Drop;
 
-// Constructor/destructor/operators
-	CPenT(HPEN hPen = NULL) : m_hPen(hPen)
-	{ }
 
-	~CPenT()
-	{
-		if(t_bManaged && m_hPen != NULL)
-			DeleteObject();
+//////////////////////////////////////////////////////////////////
+pub struct CPen {
+    inner: Inner,
+}
+
+impl CPen {
+	pub fn new()->CPen{
+		CPen{
+			inner: Inner::new(),
+		}
 	}
 
-	CPenT<t_bManaged>& operator =(HPEN hPen)
-	{
-		Attach(hPen);
-		return *this;
+	pub fn from_pen(h: HPEN)->CPen{
+		CPen{
+			inner: Inner::from_pen(h)
+		}
 	}
 
-	void Attach(HPEN hPen)
-	{
-		if(t_bManaged && m_hPen != NULL && m_hPen != hPen)
-			::DeleteObject(m_hPen);
-		m_hPen = hPen;
+	pub fn Attach(&mut self,hpen: HPEN){
+		if self.inner.hpen != NULL_PEN2 && self.inner.hpen != hpen {
+			unsafe{gdi32::DeleteObject(self.inner.hpen as HGDIOBJ)};
+		}
+		self.inner.hpen = hpen;
+	}
+}
+
+impl Drop for CPen {
+	fn drop(&mut self){
+		self.inner.DeleteObject();
+	}
+}
+//////////////////////////////////////////////////////////////////
+pub struct CPenHandle {
+    inner: Inner,
+}
+
+impl CPenHandle {
+	pub fn new()->CPenHandle{
+		CPenHandle{
+			inner: Inner::new(),
+		}
 	}
 
-	HPEN Detach()
-	{
-		HPEN hPen = m_hPen;
-		m_hPen = NULL;
-		return hPen;
+	pub fn from_pen(h: HPEN)->CPenHandle{
+		CPenHandle{
+			inner: Inner::from_pen(h)
+		}
 	}
 
-	operator HPEN() const { return m_hPen; }
+	pub fn Attach(&mut self,hpen: HPEN){
+		self.inner.hpen = hpen;
+	}
+}
 
-	bool IsNull() const { return (m_hPen == NULL); }
+//////////////////////////////////////////////////////////////////
+struct Inner {
+    hpen: HPEN,
+}
 
+const NULL_PEN2: HPEN = 0 as HPEN;
+
+impl Inner {
+	fn new()->Inner{
+		Inner{
+			hpen: NULL_PEN2,
+		}
+	}
+
+	fn from_pen(h: HPEN)->Inner{
+		Inner{
+			hpen: h,
+		}
+	}
+
+	fn Detach (&mut self)->HPEN {
+		let hPen = self.hpen;
+		self.hpen = NULL_PEN2;
+		hPen
+	}
+
+	//pub fn HPEN (&self)->operator { self.hpen }
+
+	fn IsNull (&self)->bool { self.hpen == NULL_PEN2 }
+
+	fn assert_null(&self){
+		debug_assert!(self.hpen == NULL_PEN2);
+	}
 // Create methods
-	HPEN CreatePen(int nPenStyle, int nWidth, COLORREF crColor)
-	{
-		ATLASSERT(m_hPen == NULL);
-		m_hPen = ::CreatePen(nPenStyle, nWidth, crColor);
-		return m_hPen;
+	fn CreatePen(&mut self,nPenStyle: c_int, nWidth: c_int, crColor: COLORREF)->HPEN {
+		self.assert_null();
+		self.hpen = unsafe{gdi32::CreatePen(nPenStyle, nWidth, crColor)};
+		self.hpen
 	}
 
-#ifndef _WIN32_WCE
-	HPEN CreatePen(int nPenStyle, int nWidth, const LOGBRUSH* pLogBrush, int nStyleCount = 0, const DWORD* lpStyle = NULL)
-	{
-		ATLASSERT(m_hPen == NULL);
-		m_hPen = ::ExtCreatePen(nPenStyle, nWidth, pLogBrush, nStyleCount, lpStyle);
-		return m_hPen;
+//#ifndef _WIN32_WCE
+	fn CreatePen_ext(&mut self,nPenStyle: c_int, nWidth: c_int, pLogBrush: &LOGBRUSH,nStyleCount: Option<c_int> /*= 0*/, lpStyle: Option<*const DWORD> /*= NULL*/)->HPEN {
+		self.assert_null();
+		let n = extract_opt_by_null!(nStyleCount,c_int) as DWORD;
+		let s = extract_opt_by_null!(lpStyle,*const DWORD);
+		self.hpen = unsafe{gdi32::ExtCreatePen(nPenStyle as DWORD, nWidth as DWORD, pLogBrush, n, s)};
+		self.hpen
 	}
-#endif // !_WIN32_WCE
+//#endif // !_WIN32_WCE
 
-	HPEN CreatePenIndirect(LPLOGPEN lpLogPen)
-	{
-		ATLASSERT(m_hPen == NULL);
-		m_hPen = ::CreatePenIndirect(lpLogPen);
-		return m_hPen;
+	fn CreatePenIndirect(&mut self,lpLogPen: LPLOGPEN)->HPEN {
+		self.assert_null();
+		self.hpen = unsafe{gdi32::CreatePenIndirect(lpLogPen)};
+		self.hpen
 	}
 
-	BOOL DeleteObject()
-	{
-		ATLASSERT(m_hPen != NULL);
-		BOOL bRet = ::DeleteObject(m_hPen);
-		if(bRet)
-			m_hPen = NULL;
-		return bRet;
+	fn DeleteObject (&mut self)->BOOL {
+		debug_assert!(self.hpen != NULL_PEN2);
+		let bRet = unsafe{gdi32::DeleteObject(self.hpen as HGDIOBJ) as BOOL};
+		if bRet == TRUE {
+			self.hpen = NULL_PEN2;
+		}
+		bRet
 	}
 
 // Attributes
-	int GetLogPen(LOGPEN* pLogPen) const
-	{
-		ATLASSERT(m_hPen != NULL);
-		return ::GetObject(m_hPen, sizeof(LOGPEN), pLogPen);
+	fn GetLogPen (&self,pLogPen: &mut LOGPEN)->c_int {
+		debug_assert!(self.hpen != NULL_PEN2);
+		unsafe{gdi32::GetObjectW(self.hpen as HANDLE, mem::size_of::<LOGPEN>() as c_int, pLogPen as *mut _ as LPVOID)}
 	}
 
-	bool GetLogPen(LOGPEN& LogPen) const
-	{
-		ATLASSERT(m_hPen != NULL);
-		return (::GetObject(m_hPen, sizeof(LOGPEN), &LogPen) == sizeof(LOGPEN));
+	// pub fn GetLogPen (@LOGPEN& LogPen)->bool {
+	// 	ATLASSERT(self.hpen != NULL);
+	// 	gdi32::GetObject(self.hpen, sizeof(LOGPEN), &LogPen) == sizeof(LOGPEN)
+	// }
+
+//#ifndef _WIN32_WCE
+	fn GetExtLogPen (&self,pLogPen: &mut LOGPEN,nSize: Option<c_int> /*= sizeof(EXTLOGPEN)*/)->c_int {
+		debug_assert!(self.hpen != NULL_PEN2);
+		let n = extract_opt_by_default!(mem::size_of::<EXTLOGPEN>(),nSize,c_int);
+		unsafe{gdi32::GetObjectW(self.hpen as HANDLE, n, pLogPen as *mut _ as LPVOID)}
 	}
 
-#ifndef _WIN32_WCE
-	int GetExtLogPen(EXTLOGPEN* pLogPen, int nSize = sizeof(EXTLOGPEN)) const
-	{
-		ATLASSERT(m_hPen != NULL);
-		return ::GetObject(m_hPen, nSize, pLogPen);
+	// pub fn GetExtLogPen (@EXTLOGPEN& ExtLogPen,nSize: Option<c_int> /*= sizeof(EXTLOGPEN)*/)->bool {
+	// 	ATLASSERT(self.hpen != NULL);
+	// 	let n = extract_opt_by_default!(mem::size_of::<EXTLOGPEN>(),nSize,c_int);
+	// 	let nRet = ::GetObject(self.hpen, n, &ExtLogPen) as c_int;
+	// 	(nRet > 0) && (nRet <= nSize)
+	// }
+//#endif // !_WIN32_WCE
+}
+
+//////////////////////////////////////////////////////////////////
+// expose all functions in Inner
+impl CPen {
+	pub fn Detach (&mut self)->HPEN {
+		self.inner.Detach()
+	}
+	pub fn IsNull (&self)->bool {
+		self.inner.IsNull()
 	}
 
-	bool GetExtLogPen(EXTLOGPEN& ExtLogPen, int nSize = sizeof(EXTLOGPEN)) const
-	{
-		ATLASSERT(m_hPen != NULL);
-		int nRet = ::GetObject(m_hPen, nSize, &ExtLogPen);
-		return ((nRet > 0) && (nRet <= nSize));
+	pub fn CreatePen(&mut self,nPenStyle: c_int, nWidth: c_int, crColor: COLORREF)->HPEN {
+		self.inner.CreatePen(nPenStyle, nWidth, crColor)
 	}
-#endif // !_WIN32_WCE
-};
+	pub fn CreatePen_ext(&mut self,nPenStyle: c_int, nWidth: c_int, pLogBrush: &LOGBRUSH,nStyleCount: Option<c_int>, lpStyle: Option<*const DWORD>)->HPEN {
+		self.inner.CreatePen_ext(nPenStyle, nWidth, pLogBrush, nStyleCount, lpStyle)
+	}
+	pub fn CreatePenIndirect(&mut self,lpLogPen: LPLOGPEN)->HPEN {
+		self.inner.CreatePenIndirect(lpLogPen)
+	}
+	pub fn DeleteObject (&mut self)->BOOL {
+		self.inner.DeleteObject()
+	}
+	pub fn GetLogPen (&self,pLogPen: &mut LOGPEN)->c_int {
+		self.inner.GetLogPen(pLogPen)
+	}
+	pub fn GetExtLogPen (&self,pLogPen: &mut LOGPEN,nSize: Option<c_int> /*= sizeof(EXTLOGPEN)*/)->c_int {
+		self.inner.GetExtLogPen(pLogPen, nSize)
+	}
+}
 
-typedef CPenT<false>   CPenHandle;
-typedef CPenT<true>    CPen;
+//////////////////////////////////////////////////////////////////
+impl CPenHandle {
+	pub fn Detach (&mut self)->HPEN {
+		self.inner.Detach()
+	}
+	pub fn IsNull (&self)->bool {
+		self.inner.IsNull()
+	}
+
+	pub fn CreatePen(&mut self,nPenStyle: c_int, nWidth: c_int, crColor: COLORREF)->HPEN {
+		self.inner.CreatePen(nPenStyle, nWidth, crColor)
+	}
+	pub fn CreatePen_ext(&mut self,nPenStyle: c_int, nWidth: c_int, pLogBrush: &LOGBRUSH,nStyleCount: Option<c_int>, lpStyle: Option<*const DWORD>)->HPEN {
+		self.inner.CreatePen_ext(nPenStyle, nWidth, pLogBrush, nStyleCount, lpStyle)
+	}
+	pub fn CreatePenIndirect(&mut self,lpLogPen: LPLOGPEN)->HPEN {
+		self.inner.CreatePenIndirect(lpLogPen)
+	}
+	pub fn DeleteObject (&mut self)->BOOL {
+		self.inner.DeleteObject()
+	}
+	pub fn GetLogPen (&self,pLogPen: &mut LOGPEN)->c_int {
+		self.inner.GetLogPen(pLogPen)
+	}
+	pub fn GetExtLogPen (&self,pLogPen: &mut LOGPEN,nSize: Option<c_int> /*= sizeof(EXTLOGPEN)*/)->c_int {
+		self.inner.GetExtLogPen(pLogPen, nSize)
+	}
+}
