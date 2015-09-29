@@ -3,7 +3,7 @@
 #[cfg(target_arch = "x86")]
 pub mod imp {
     use std;
-    use winapi::{USHORT, ULONG64, c_void, DWORD_PTR, LPCVOID, SIZE_T};
+    use winapi::{BYTE, DWORD, c_void, DWORD_PTR, LPCVOID, SIZE_T};
     use kernel32;
     use std::fmt;
 	//use kernel32;
