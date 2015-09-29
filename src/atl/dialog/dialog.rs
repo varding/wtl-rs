@@ -38,8 +38,6 @@ impl<T> fmt::Display for Dialog<T> {
         write!(f, "hwnd:0x{:x}", self.cwin.GetHwnd() as usize)
     }
 }
-//expose all method of cwindow
-//expose_cwindow!(Dialog);
 
 fn MAKEINTRESOURCEW(id: WORD) -> LPCWSTR {
     id as usize as LPCWSTR
@@ -1341,6 +1339,11 @@ impl<T> Dialog<T> {
     #[inline(always)]
     pub fn ModifyStyleEx (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
         self.cwin.ModifyStyleEx(dwRemove,dwAdd,nFlags)
+    }
+
+    #[inline(always)]
+    pub fn SetWindowText (&self, lpszString: &str) -> bool{
+        self.cwin.SetWindowText(lpszString)
     }
 }
 

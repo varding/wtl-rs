@@ -13,4 +13,5 @@ user32-sys   = {version = "*",path = "./pkg/winapi/lib/user32-sys"}
 kernel32-sys = {version = "*",path = "./pkg/winapi/lib/kernel32-sys"}
 shell32-sys  = {version = "*",path = "./pkg/winapi/lib/shell32-sys"}
 gdi32-sys    = {version = "*",path = "./pkg/winapi/lib/gdi32-sys"}
+opengl32-sys  = {version = "*",path = "./pkg/winapi/lib/opengl32-sys"}
 #rand = "*"

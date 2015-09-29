@@ -25,6 +25,7 @@ impl ui::DialogHandler for MainDialogHandler {
         r.main_dlg.this_msg().on_init_dialog(|_,t|{
             println!("hello main dlg");
             t.main_dlg.this.CenterWindow(NULL_HWND);
+            t.main_dlg.this.SetWindowText("hello");
         });
 
         r.main_dlg.this_msg().on_close(|_,_|{

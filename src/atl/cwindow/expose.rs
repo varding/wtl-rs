@@ -715,4 +715,9 @@ impl  {
 	pub fn ModifyStyleEx (&self,dwRemove:DWORD,dwAdd:DWORD,nFlags:UINT) -> bool {
 		self.cwin.ModifyStyleEx(dwRemove,dwAdd,nFlags)
 	}
+
+	#[inline(always)]
+    pub fn SetWindowText (&self, lpszString: &str) -> bool{
+        self.cwin.SetWindowText(lpszString)
+    }
 }

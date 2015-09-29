@@ -5,6 +5,7 @@ use winapi::*;
 use gdi32;
 use kernel32;
 use user32;
+use opengl32;
 use std::ops::Drop;
 use atl::NULL_HWND;
 
@@ -1325,7 +1326,7 @@ impl Inner {
 //#ifndef _WIN32_WCE
 	pub fn TransparentBlt(&self,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int,hSrcDC: HDC,xSrc: c_int,ySrc: c_int,nSrcWidth: c_int,nSrcHeight: c_int,crTransparent: UINT)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::TransparentBlt(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, nSrcWidth, nSrcHeight, crTransparent)}
+		unsafe{gdi32::GdiTransparentBlt(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, nSrcWidth, nSrcHeight, crTransparent)}
 	}
 //#else // CE specific
 	//  fn TransparentImage(&self,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int,hSrcDC: HDC,xSrc: c_int,ySrc: c_int,nSrcWidth: c_int,nSrcHeight: c_int,crTransparent: UINT)->BOOL {
@@ -1337,7 +1338,7 @@ impl Inner {
 //#if (!defined(_WIN32_WCE) || (_WIN32_WCE >= 420))
 	pub fn GradientFill (&self,pVertices: &mut TRIVERTEX,nVertices: DWORD,pMeshElements: LPVOID,nMeshElements: DWORD,dwMode: DWORD)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::GradientFill(self.hdc, pVertices, nVertices, pMeshElements, nMeshElements, dwMode)}
+		unsafe{gdi32::GdiGradientFill(self.hdc, pVertices, nVertices, pMeshElements, nMeshElements, dwMode)}
 	}
 
 	pub fn GradientFillRect (&self, rect: &RECT, clr1: COLORREF, clr2: COLORREF,  bHorizontal: bool)->BOOL {
@@ -1367,14 +1368,14 @@ impl Inner {
 			GRADIENT_FILL_RECT_V
 		};
 		//bHorizontal ? GRADIENT_FILL_RECT_H : GRADIENT_FILL_RECT_V
-		unsafe{gdi32::GradientFill(self.hdc, &mut arrTvx[0], 2, &mut gr as *mut _ as PVOID, 1, h)}
+		unsafe{gdi32::GdiGradientFill(self.hdc, &mut arrTvx[0], 2, &mut gr as *mut _ as PVOID, 1, h)}
 	}
 //#endif // !defined(_WIN32_WCE) || (_WIN32_WCE >= 420)
 
 //#if !defined(_WIN32_WCE) || (_WIN32_WCE > 0x500)
 	pub fn AlphaBlend(&self,x: c_int,y: c_int,nWidth: c_int,nHeight: c_int,hSrcDC: HDC,xSrc: c_int,ySrc: c_int,nSrcWidth: c_int,nSrcHeight: c_int,bf: BLENDFUNCTION)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::AlphaBlend(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, nSrcWidth, nSrcHeight, bf)}
+		unsafe{gdi32::GdiAlphaBlend(self.hdc, x, y, nWidth, nHeight, hSrcDC, xSrc, ySrc, nSrcWidth, nSrcHeight, bf)}
 	}
 //#endif // !defined(_WIN32_WCE) || (_WIN32_WCE > 0x500)
 //#endif //  !defined(_ATL_NO_MSIMG) || defined(_WIN32_WCE)
@@ -2211,52 +2212,52 @@ impl Inner {
 
 	pub fn wglCreateContext (&self)->HGLRC {
 		self.assert_dc();
-		unsafe{gdi32::wglCreateContext(self.hdc)}
+		unsafe{opengl32::wglCreateContext(self.hdc)}
 	}
 
 	pub fn wglCreateLayerContext(&self,iLayerPlane: c_int)->HGLRC {
 		self.assert_dc();
-		unsafe{gdi32::wglCreateLayerContext(self.hdc, iLayerPlane)}
+		unsafe{opengl32::wglCreateLayerContext(self.hdc, iLayerPlane)}
 	}
 
 	pub fn wglMakeCurrent(&self,hglrc: HGLRC)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::wglMakeCurrent(self.hdc, hglrc)}
+		unsafe{opengl32::wglMakeCurrent(self.hdc, hglrc)}
 	}
 
 	pub fn wglUseFontBitmaps(&self,dwFirst: DWORD,dwCount: DWORD,listBase: DWORD)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::wglUseFontBitmapsW(self.hdc, dwFirst, dwCount, listBase)}
+		unsafe{opengl32::wglUseFontBitmapsW(self.hdc, dwFirst, dwCount, listBase)}
 	}
 
 	pub fn wglUseFontOutlines(&self,dwFirst: DWORD,dwCount: DWORD,listBase: DWORD,deviation: FLOAT,extrusion: FLOAT,format: c_int,lpgmf: LPGLYPHMETRICSFLOAT)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::wglUseFontOutlinesW(self.hdc, dwFirst, dwCount, listBase, deviation, extrusion, format, lpgmf)}
+		unsafe{opengl32::wglUseFontOutlinesW(self.hdc, dwFirst, dwCount, listBase, deviation, extrusion, format, lpgmf)}
 	}
 
 	pub fn wglDescribeLayerPlane(&self,iPixelFormat: c_int,iLayerPlane: c_int,nBytes: UINT,plpd: LPLAYERPLANEDESCRIPTOR)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::wglDescribeLayerPlane(self.hdc, iPixelFormat, iLayerPlane, nBytes, plpd)}
+		unsafe{opengl32::wglDescribeLayerPlane(self.hdc, iPixelFormat, iLayerPlane, nBytes, plpd)}
 	}
 
 	pub fn wglSetLayerPaletteEntries(&self,iLayerPlane: c_int,iStart: c_int,cEntries: c_int,pclr: &COLORREF)->c_int {
 		self.assert_dc();
-		unsafe{gdi32::wglSetLayerPaletteEntries(self.hdc, iLayerPlane, iStart, cEntries, pclr)}
+		unsafe{opengl32::wglSetLayerPaletteEntries(self.hdc, iLayerPlane, iStart, cEntries, pclr)}
 	}
 
 	pub fn wglGetLayerPaletteEntries(&self,iLayerPlane: c_int,iStart: c_int,cEntries: c_int, pclr: &mut COLORREF)->c_int {
 		self.assert_dc();
-		unsafe{gdi32::wglGetLayerPaletteEntries(self.hdc, iLayerPlane, iStart, cEntries, pclr)}
+		unsafe{opengl32::wglGetLayerPaletteEntries(self.hdc, iLayerPlane, iStart, cEntries, pclr)}
 	}
 
 	pub fn wglRealizeLayerPalette(&self,iLayerPlane: c_int,bRealize: BOOL)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::wglRealizeLayerPalette(self.hdc, iLayerPlane, bRealize)}
+		unsafe{opengl32::wglRealizeLayerPalette(self.hdc, iLayerPlane, bRealize)}
 	}
 
 	pub fn wglSwapLayerBuffers(&self,uPlanes: UINT)->BOOL {
 		self.assert_dc();
-		unsafe{gdi32::wglSwapLayerBuffers(self.hdc, uPlanes)}
+		unsafe{opengl32::wglSwapLayerBuffers(self.hdc, uPlanes)}
 	}
 //#endif // !defined(_ATL_NO_OPENGL) && !defined(_WIN32_WCE)
 

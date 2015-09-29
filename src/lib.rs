@@ -7,7 +7,7 @@ extern crate user32;
 extern crate kernel32;
 extern crate shell32;
 extern crate gdi32;
-
+extern crate opengl32;
 
 //pub use self::misc::*;
 
