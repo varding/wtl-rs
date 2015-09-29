@@ -11,6 +11,6 @@ install:
   - git submodule update --init --recursive
 build_script:
   - cd C:\projects\wtl-rs\examples\hello_dialog
-  - cargo build --verbose
+  - cargo build
 test_script:
-  - cargo test --verbose
+  - cargo test
