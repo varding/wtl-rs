@@ -1,7 +1,5 @@
 environment:
   matrix:
-  - TARGET: x86_64-pc-windows-msvc
-  - TARGET: i686-pc-windows-msvc
   - TARGET: x86_64-pc-windows-gnu
   - TARGET: i686-pc-windows-gnu
 install:
@@ -17,4 +15,4 @@ build_script:
   - cargo build
 test_script:
   - cd C:\projects\wtl-rs\
-  - cargo test --verbose
+  - cargo test
