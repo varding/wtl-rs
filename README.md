@@ -1,4 +1,4 @@
-wtl-rs  
+wtl-rs  [![Build status](https://ci.appveyor.com/api/projects/status/u04gc0xdi89g4huj?svg=true)](https://ci.appveyor.com/project/varding/wtl-rs)
 =====
 Windows WTL GUI library for Rust
 
