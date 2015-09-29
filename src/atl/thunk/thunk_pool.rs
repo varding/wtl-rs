@@ -1,10 +1,5 @@
 #![allow(dead_code)]
 
-//#[cfg(target_arch = "x86")]
-//use super::stdthunk_x86::imp::Thunk;
-
-//#[cfg(target_arch = "x86_64")]
-//use super::stdthunk_x64::imp::Thunk;
 use super::Thunk;
 
 use winapi::{LPVOID, SIZE_T, MEM_COMMIT, PAGE_EXECUTE_READWRITE, MEM_RELEASE};
