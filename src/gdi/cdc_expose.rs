@@ -969,11 +969,15 @@ impl CDC {
 	pub fn EndDoc(&self) -> c_int {
 		self.inner.EndDoc()
 	}
-	//  pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+	
+	#[inline(always)]
+	pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+		self.inner.PlayMetaFile(hMF)
+	}
 
 	#[inline(always)]
-	pub fn PlayMetaFile(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
-		self.inner.PlayMetaFile(hEnhMetaFile,lpBounds)
+	pub fn PlayMetaFile_enh(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
+		self.inner.PlayMetaFile_enh(hEnhMetaFile,lpBounds)
 	}
 
 	#[inline(always)]
@@ -2188,11 +2192,15 @@ impl CDCHandle {
 	pub fn EndDoc(&self) -> c_int {
 		self.inner.EndDoc()
 	}
-	//  pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+		
+	#[inline(always)]
+	pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+		self.inner.PlayMetaFile(hMF)
+	}
 
 	#[inline(always)]
-	pub fn PlayMetaFile(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
-		self.inner.PlayMetaFile(hEnhMetaFile,lpBounds)
+	pub fn PlayMetaFile_enh(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
+		self.inner.PlayMetaFile_enh(hEnhMetaFile,lpBounds)
 	}
 
 	#[inline(always)]
@@ -3407,11 +3415,15 @@ impl CPaintDC {
 	pub fn EndDoc(&self) -> c_int {
 		self.inner.EndDoc()
 	}
-	//  pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+	
+	#[inline(always)]
+	pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+		self.inner.PlayMetaFile(hMF)
+	}
 
 	#[inline(always)]
-	pub fn PlayMetaFile(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
-		self.inner.PlayMetaFile(hEnhMetaFile,lpBounds)
+	pub fn PlayMetaFile_enh(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
+		self.inner.PlayMetaFile_enh(hEnhMetaFile,lpBounds)
 	}
 
 	#[inline(always)]
@@ -4626,11 +4638,15 @@ impl CClientDC {
 	pub fn EndDoc(&self) -> c_int {
 		self.inner.EndDoc()
 	}
-	//  pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
 
 	#[inline(always)]
-	pub fn PlayMetaFile(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
-		self.inner.PlayMetaFile(hEnhMetaFile,lpBounds)
+	pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+		self.inner.PlayMetaFile(hMF)
+	}
+
+	#[inline(always)]
+	pub fn PlayMetaFile_enh(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
+		self.inner.PlayMetaFile_enh(hEnhMetaFile,lpBounds)
 	}
 
 	#[inline(always)]
@@ -5845,11 +5861,15 @@ impl CWindowDC {
 	pub fn EndDoc(&self) -> c_int {
 		self.inner.EndDoc()
 	}
-	//  pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+	
+	#[inline(always)]
+	pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+		self.inner.PlayMetaFile(hMF)
+	}
 
 	#[inline(always)]
-	pub fn PlayMetaFile(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
-		self.inner.PlayMetaFile(hEnhMetaFile,lpBounds)
+	pub fn PlayMetaFile_enh(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT) -> BOOL {
+		self.inner.PlayMetaFile_enh(hEnhMetaFile,lpBounds)
 	}
 
 	#[inline(always)]

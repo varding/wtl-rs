@@ -26,6 +26,7 @@ impl CWindow {
 }
 ///////////////////////////////////////
 
+static RC_DEFAULT: RECT = RECT{left: CW_USEDEFAULT, right: CW_USEDEFAULT, top: 0, bottom: 0};
 
 //this is different from CWinTrait,and it was introdced since wtl-rs
 impl CWindow {
@@ -200,7 +201,6 @@ impl CWindow {
         CWindow::new(hWndParent)
     }
 
-
     pub fn GetDescendantWindow(&self, nID: c_int) -> CWindow {
         self.assert_window();
         let mut hWndTmp: HWND;
@@ -235,20 +235,10 @@ impl CWindow {
         }
     }
 
-
-	///////////////////////////////////
-
-
-	//in cpp,stack alloc obj can use as follow:
-	//CButton btn;
-	//btn.Create(...)
-	//but rust must init first,so this function must be static
-	//let b:CButton = CButton::Create(...);
-	//a wrapper is needed, e.g CButton::New(),new will call create
-    pub fn Create(lpstrWndClass: &str,
+    pub fn Create(&mut self,lpstrWndClass: &str,
                   hWndParent: HWND,
                   // _U_RECT rect = NULL,
-                  rect: &RECT,
+                  rect: Option<&RECT>,
                   szWindowName: &str,
                   dwStyle: DWORD,
                   dwExStyle: DWORD,
@@ -257,25 +247,32 @@ impl CWindow {
                   lpCreateParam: LPVOID)
                   -> HWND {
 		//ATLASSUME(self.0 == NULL);
+        debug_assert!(self.0 == NULL_HWND);
 		//assert!(self.0 == (0 as HWND));
 		//if(rect.m_lpRect == NULL)
-		//	rect.m_lpRect = &rcDefault;
+		//	rect.m_lpRect = &RC_DEFAULT;
+        let r = if let Some(r1) = rect {
+            r1
+        }else{
+            &RC_DEFAULT
+        };
         let c = lpstrWndClass.to_c_u16();
         let n = szWindowName.to_c_u16();
         unsafe {
-            user32::CreateWindowExW(dwExStyle,
+            self.0 = user32::CreateWindowExW(dwExStyle,
                                     c.as_ptr(),
                                     n.as_ptr(),
                                     dwStyle,
-                                    rect.left,
-                                    rect.top,
-                                    rect.right - rect.left,
-                                    rect.bottom - rect.top,
+                                    r.left,
+                                    r.top,
+                                    r.right - r.left,
+                                    r.bottom - r.top,
                                     hWndParent,
                                     hMenu,
                                     // _AtlBaseModule.GetModuleInstance(), lpCreateParam);
                                     GetModuleInstance(),
-                                    lpCreateParam)
+                                    lpCreateParam);
+            self.0
         }
     }
 
@@ -385,24 +382,28 @@ impl CWindow {
 		unsafe{user32::SetWindowTextW(self.0, s.as_ptr())  == TRUE}
 	}
 
-	// pub fn GetWindowText (&self,lpszStringBuf:LPTSTR,nMaxCount:c_int) -> c_int {
-	// 	self.assert_window();
-	// 	user32::GetWindowText(self.0, lpszStringBuf, nMaxCount)
-	// }
+	pub fn GetWindowText (&self) -> String {
+		self.assert_window();
+        self.get_text(self.0)
+	}
 
+    #[inline]
+    fn get_text(&self,h: HWND) -> String {
+        let nLength = unsafe{user32::GetWindowTextLengthW(h) + 1};
+        if nLength < 128 {
+            let mut pszText = [0u16; 128];
+            let nRead = unsafe{user32::GetWindowTextW(h, pszText.as_mut_ptr(), nLength)};
+            debug_assert!(nRead == nLength - 1);
+            String::from_utf16_lossy(pszText.as_ref())
+        }else{
+            let mut pszText: Vec<u16> = Vec::with_capacity(nLength as usize);
+            let nRead = unsafe{user32::GetWindowTextW(h, pszText.as_mut_ptr(), nLength)};
+            debug_assert!(nRead == nLength - 1);
+            String::from_utf16_lossy(pszText.as_ref())
+        }
+    }
 
 	// c_int GetWindowText( CSimpleString& strText) const
-	// {
-	// 	c_int nLength;
-	// 	LPTSTR pszText;
-
-	// 	nLength = GetWindowTextLength();
-	// 	pszText = strText.GetBuffer(nLength+1);
-	// 	nLength = GetWindowText(pszText, nLength+1);
-	// 	strText.ReleaseBuffer(nLength);
-
-	// 	return nLength;
-	// }
 
     pub fn GetWindowTextLength(&self) -> c_int {
         self.assert_window();
@@ -411,17 +412,10 @@ impl CWindow {
         }
     }
 
-
 	// MAKELPARAM is a macro in user32.h
-
 	// #define MAKELPARAM(l, h)      (LPARAM)MAKELONG(l, h)
-
 	// MAKELONG is a macro in common.h:
-
 	// #define MAKELONG(low, high)   ((DWORD)(((WORD)(low)) | (((DWORD)((WORD)(high))) << 16)))
-
-
-
 
     pub fn SetFont(&self, hFont: HFONT, bRedraw: BOOL) {
         self.assert_window();
@@ -437,8 +431,6 @@ impl CWindow {
             user32::SendMessageW(self.0, WM_GETFONT, 0, 0)  as HFONT
         }
     }
-
-
 
     pub fn GetMenu(&self) -> HMENU {
         self.assert_window();
@@ -877,31 +869,34 @@ impl CWindow {
             user32::CheckRadioButton(self.0, nIDFirstButton, nIDLastButton, nIDCheckButton) == TRUE
         }
     }
-/*
+
+    /*
 	pub fn DlgDirList (&self,lpPathSpec: &str,nIDListBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
 		self.assert_window();
         let p  = lpPathSpec.to_c_u16();
-		user32::DlgDirList(self.0, p, nIDListBox, nIDStaticPath, nFileType)
+        //TCHAR path[MAX_PATH];
+        let mut path = [0u16, MAX_PATH];
+		unsafe{user32::DlgDirListW(self.0, p.as_ptr(), nIDListBox, nIDStaticPath, nFileType)}
 	}
 
 	pub fn DlgDirListComboBox (&self,lpPathSpec: &str,nIDComboBox:c_int,nIDStaticPath:c_int,nFileType:UINT) -> c_int {
 		self.assert_window();
         let p = lpPathSpec.to_c_u16();
-		user32::DlgDirListComboBox(self.0, p, nIDComboBox, nIDStaticPath, nFileType)
+		unsafe{user32::DlgDirListComboBoxW(self.0, p.as_ptr(), nIDComboBox, nIDStaticPath, nFileType)}
 	}
 
 	pub fn DlgDirSelect (&self,lpString: &str,nCount:c_int,nIDListBox:c_int) -> bool {
 		self.assert_window();
         let s = lpString.to_c_u16();
-		user32::DlgDirSelectEx(self.0, s.as_ptr(), nCount, nIDListBox) == TRUE
+		unsafe{user32::DlgDirSelectExW(self.0, s.as_ptr(), nCount, nIDListBox) == TRUE}
 	}
 
 	pub fn DlgDirSelectComboBox (&self,lpString:&str,nCount:c_int,nIDComboBox:c_int) -> bool {
 		self.assert_window();
         let s = lpString.to_c_u16();
-		user32::DlgDirSelectComboBoxEx(self.0, s.as_ptr(), nCount, nIDComboBox) == TRUE
+		unsafe{user32::DlgDirSelectComboBoxExW(self.0, s.as_ptr(), nCount, nIDComboBox) == TRUE}
 	}
-*/
+    */
     pub fn GetDlgItemInt(&self, nID: c_int) -> UINT {
         self.assert_window();
         unsafe {
@@ -921,63 +916,18 @@ impl CWindow {
 		self.assert_window();
         let hItem = self.GetDlgItem(nID);
         if hItem != NULL_HWND {
-            let nLength = unsafe{user32::GetWindowTextLengthW(hItem) + 1};
-            //LPTSTR pszText;
-            let mut pszText: Vec<u16> = Vec::with_capacity(nLength as usize);
-            //nLength = 
-            //pszText = strText.GetBuffer(nLength+1);
-            let nRead = unsafe{user32::GetWindowTextW(hItem, pszText.as_mut_ptr(), nLength)};
-            debug_assert!(nRead == nLength - 1);
-            String::from_utf16_lossy(pszText.as_ref())
+            self.get_text(hItem)
         }
         else
         {
             String::new()
         }
-		//user32::GetDlgItemText(self.0, nID, lpStr, nMaxCount)
 	}
 
-	// UINT GetDlgItemText(
-	// 	 c_int nID,
-	// 	 CSimpleString& strText) const
-	// {
-	// 	self.assert_window();
-
-	// 	HWND hItem = GetDlgItem(nID);
-	// 	if (hItem != NULL)
-	// 	{
-	// 		c_int nLength;
-	// 		LPTSTR pszText;
-
-	// 		nLength = ::GetWindowTextLength(hItem);
-	// 		pszText = strText.GetBuffer(nLength+1);
-	// 		nLength = ::GetWindowText(hItem, pszText, nLength+1);
-	// 		strText.ReleaseBuffer(nLength);
-
-	// 		return nLength;
-	// 	}
-	// 	else
-	// 	{
-	// 		strText.Empty();
-
-	// 		return 0;
-	// 	}
-	// }
+	//UINT GetDlgItemText(c_int nID,CSimpleString& strText) const
 
 	//OLE
-	// BOOL GetDlgItemText(
-	// 	 c_int nID,
-	// 	 _Deref_post_opt_z_ BSTR& bstrText)
-	// {
-	// 	self.assert_window();
-
-	// 	HWND hWndCtl = GetDlgItem(nID);
-	// 	if(hWndCtl == NULL)
-	// 		return FALSE;
-
-	// 	return CWindow(hWndCtl).GetWindowText(bstrText);
-	// }
-
+	//BOOL GetDlgItemText(c_int nID,_Deref_post_opt_z_ BSTR& bstrText)
 
     pub fn IsDlgButtonChecked(&self, nIDButton: c_int) -> UINT {
         self.assert_window();
@@ -1005,64 +955,20 @@ impl CWindow {
         }
     }
 
-	// pub fn SetDlgItemText (&self,nID:c_int,lpszString:LPCTSTR) -> bool {
-	// 	self.assert_window();
-	// 	user32::SetDlgItemText(self.0, nID, lpszString) == TRUE
-	// }
+	pub fn SetDlgItemText (&self,nID:c_int,lpszString: &str) -> bool {
+		self.assert_window();
+        let s = lpszString.to_c_u16();
+		unsafe{user32::SetDlgItemTextW(self.0, nID, s.as_ptr()) == TRUE}
+	}
 
 // #ipub fndef _ATL_NO_HOSTING
-// ATLPREFAST_SUPPRESS(6387)
-// 	HRESULT GetDlgControl(
-// 		 c_int nID,
-// 		 REFIID iid,
-// 		 void** ppCtrl)
-// 	{
-// 		self.assert_window();
-// 		ATLASSERT(ppCtrl != NULL);
-// 		if (ppCtrl == NULL)
-// 			return E_POINTER;
-// 		*ppCtrl = NULL;
-// 		HRESULT hr = HRESULT_FROM_WIN32(ERROR_CONTROL_ID_NOT_FOUND);
-// 		HWND hWndCtrl = GetDlgItem(nID);
-// 		if (hWndCtrl != NULL)
-// 		{
-// 			*ppCtrl = NULL;
-// 			CComPtr<IUnknown> spUnk;
-// 			hr = AtlAxGetControl(hWndCtrl, &spUnk);
-// 			if (SUCCEEDED(hr))
-// 				hr = spUnk->QueryInterface(iid, ppCtrl);
-// 		}
-// 		return hr;
-// 	}
-// ATLPREFAST_UNSUPPRESS()
+//ATLPREFAST_SUPPRESS(6387)
+	//HRESULT GetDlgControl(c_int nID,REFIID iid,void** ppCtrl)
 
 // ATLPREFAST_SUPPRESS(6387)
-// 	HRESULT GetDlgHost(
-// 		 c_int nID,
-// 		 REFIID iid,
-// 		 void** ppHost)
-// 	{
-// 		self.assert_window();
-// 		ATLASSERT(ppHost != NULL);
-// 		if (ppHost == NULL)
-// 			return E_POINTER;
-// 		*ppHost = NULL;
-// 		HRESULT hr = HRESULT_FROM_WIN32(ERROR_CONTROL_ID_NOT_FOUND);
-// 		HWND hWndCtrl = GetDlgItem(nID);
-// 		if (hWndCtrl != NULL)
-// 		{
-// 			CComPtr<IUnknown> spUnk;
-// 			hr = AtlAxGetHost(hWndCtrl, &spUnk);
-// 			if (SUCCEEDED(hr))
-// 				hr = spUnk->QueryInterface(iid, ppHost);
-// 		}
-// 		return hr;
-// 	}
-// ATLPREFAST_UNSUPPRESS()
+	//HRESULT GetDlgHost(c_int nID,REFIID iid,void** ppHost)
 
 // #endif
-
-
 
     pub fn GetScrollPos(&self, nBar: c_int) -> c_int {
         self.assert_window();
@@ -1177,10 +1083,12 @@ impl CWindow {
         }
     }
 
-	// pub fn MessageBox(&self,lpszText:LPCTSTR ,lpszCaption:LPCTSTR,nType:UINT) -> c_int {
-	// 	self.assert_window();
-	// 	user32::MessageBox(self.0, lpszText, lpszCaption, nType)
-	// }
+	pub fn MessageBox(&self,lpszText:&str ,lpszCaption:&str,nType:UINT) -> c_int {
+		self.assert_window();
+        let t = lpszText.to_c_u16();
+        let c = lpszCaption.to_c_u16();
+		unsafe{user32::MessageBoxW(self.0, t.as_ptr(), c.as_ptr(), nType)}
+	}
 
     pub fn ChangeClipboardChain(&self, hWndNewNext: HWND) -> bool {
         self.assert_window();
@@ -1202,8 +1110,6 @@ impl CWindow {
             user32::OpenClipboard(self.0) == TRUE
         }
     }
-
-
 
     pub fn CreateCaret(&self, hBitmap: HBITMAP) -> bool {
         self.assert_window();
@@ -1261,10 +1167,11 @@ impl CWindow {
         }
     }
 
-	// pub fn WinHelp (&self,lpszHelp:LPCTSTR,nCmd:UINT,dwData:DWORD) -> bool {
-	// 	self.assert_window();
-	// 	user32::WinHelp(self.0, lpszHelp, nCmd, dwData) == TRUE
-	// }
+	pub fn WinHelp (&self,lpszHelp:&str,nCmd:UINT,dwData:DWORD) -> bool {
+		self.assert_window();
+        let h = lpszHelp.to_c_u16();
+		unsafe{user32::WinHelpW(self.0, h.as_ptr(), nCmd, dwData as ULONG_PTR) == TRUE}
+	}
 
     pub fn SetWindowContextHelpId(&self, dwContextHelpId: DWORD) -> bool {
         self.assert_window();
@@ -1435,21 +1342,22 @@ impl CWindow {
         }
     }
 
+	pub fn SendMessageToDescendants (&self,message:UINT,wParam:WPARAM,lParam:LPARAM,bDeep:BOOL)  {
+        unsafe{
+            let mut hWndChild = user32::GetTopWindow(self.0);
+            while hWndChild != NULL_HWND {
+                user32::SendMessageW(hWndChild, message, wParam, lParam);
 
-	// pub fn SendMessageToDescendants (&self,message:UINT,wParam:WPARAM,lParam:LPARAM,bDeep:BOOL)  {
-	// 	for(HWND hWndChild = ::GetTopWindow(self.0); hWndChild != NULL;
-	// 		hWndChild = ::GetNextWindow(hWndChild, GW_HWNDNEXT))
-	// 	{
-	// 		::SendMessage(hWndChild, message, wParam, lParam);
+                if bDeep > 0 && user32::GetTopWindow(hWndChild) != NULL_HWND {
 
-	// 		if(bDeep && ::GetTopWindow(hWndChild) != NULL)
-	// 		{
-
-	// 			CWindow wnd(hWndChild);
-	// 			wnd.SendMessageToDescendants(message, wParam, lParam, bDeep);
-	// 		}
-	// 	}
-	// }
+                    //CWindow wnd(hWndChild);
+                    let wnd = CWindow::new(hWndChild);
+                    wnd.SendMessageToDescendants(message, wParam, lParam, bDeep);
+                }
+                hWndChild = user32::GetWindow(hWndChild, GW_HWNDNEXT);
+            }
+        }
+	}
 
     pub fn CenterWindow(&self, hCenter: HWND) -> BOOL {
         self.assert_window();
@@ -1608,37 +1516,7 @@ impl CWindow {
     }
 
 	// BOOL GetWindowText( _Deref_post_opt_z_ BSTR* pbstrText)
-	// {
-	// 	return GetWindowText(*pbstrText);
-	// }
 	// BOOL GetWindowText( BSTR& bstrText)
-	// {
-	// 	USES_CONVERSION_EX;
-	// 	self.assert_window();
-	// 	::SysFreeString(bstrText);
-	// 	bstrText = NULL;
-
-	// 	c_int nLen = ::GetWindowTextLength(self.0);
-
-	// 	CTempBuffer<TCHAR> lpszText;
-	// 	if(nLen>0)
-	// 	{
-	// 		ATLTRY(lpszText.Allocate(nLen+1));
-	// 		if (lpszText == NULL)
-	// 		{
-	// 			return FALSE;
-	// 		}
-
-	// 		if(!::GetWindowText(self.0, lpszText, nLen+1))
-	// 		{
-	// 			return FALSE;
-	// 		}
-	// 	}
-
-	// 	bstrText = ::SysAllocString(T2OLE_EX_DEF(lpszText));
-
-	// 	return nLen==0 ? FALSE : ((bstrText != NULL) ? TRUE : FALSE);
-	// }
 }
 
 

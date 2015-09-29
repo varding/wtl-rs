@@ -1,4 +1,4 @@
-#![allow(dead_code, non_snake_case, non_camel_case_types)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, unused_variables)]
 
 use std::mem;
 use winapi::*;
@@ -323,18 +323,32 @@ impl Inner {
 	// 	CBitmapHandle(gdi32::GetCurrentObject(self.hdc, OBJ_BITMAP) as HBITMAP)
 	// }
 
-	//  fn CreateDC(&self,lpszDriverName: LPCTSTR,lpszDeviceName: LPCTSTR,lpszOutput: LPCTSTR,lpInitData: &DEVMODE)->HDC {
-	// 	debug_assert!(self.hdc == NULL_HDC);
-	// 	self.hdc = gdi32::CreateDCW(lpszDriverName, lpszDeviceName, lpszOutput, lpInitData);
-	// 	self.hdc
-	// }
+	pub fn CreateDC(&mut self,lpszDriverName: Option<&str>,lpszDeviceName: Option<&str>,lpszOutput: Option<&str>,lpInitData: &DEVMODEW)->HDC {
+		debug_assert!(self.hdc == NULL_HDC);
+		let driver_name = if let Some(p1) = lpszDriverName{
+			p1.to_c_u16().as_ptr()
+		}else{
+			0 as *const u16
+		};
+
+		let device_name = if let Some(p2) = lpszDeviceName{
+			p2.to_c_u16().as_ptr()
+		}else{
+			0 as *const u16
+		};
+
+		let out = if let Some(p3) = lpszOutput{
+			p3.to_c_u16().as_ptr()
+		}else{
+			0 as *const u16
+		};
+
+		self.hdc = unsafe{gdi32::CreateDCW(driver_name, device_name, out, lpInitData)};
+		self.hdc
+	}
 
 	pub fn CreateCompatibleDC (&mut self, hDC: Option<HDC> /*NULL*/)->HDC {
 		debug_assert!(self.hdc == NULL_HDC);
-		// let mut h = NULL_HDC;
-		// if let Some(h1) = hDC {
-		// 	h = h1;
-		// }
 		let h = extract_opt_by_null!(hDC,HDC);
 		self.hdc = unsafe{gdi32::CreateCompatibleDC(h)};
 		self.hdc
@@ -411,14 +425,14 @@ impl Inner {
 	}
 
 //#ifndef _WIN32_WCE
-// 	 fn EnumObjects(&self,nObjectType: c_int,@ c_int (CALLBACK* lpfn)(LPVOID,@ LPARAM),lpData: LPARAM)->c_int {
-// 		self.assert_dc();
-// //#ifdef STRICT
-// 		return ::EnumObjects(self.hdc, nObjectType, lpfn as GOBJENUMPROC, lpData);
-// //#else
-// 		return ::EnumObjects(self.hdc, nObjectType, lpfn as GOBJENUMPROC, lpData as LPVOID);
-// //#endif
-// 	}
+	pub fn EnumObjects(&self,nObjectType: c_int, lpfn: GOBJENUMPROC, lpData: LPARAM)->c_int {
+		self.assert_dc();
+//#ifdef STRICT
+		return unsafe{gdi32::EnumObjects(self.hdc, nObjectType, lpfn, lpData)};
+//#else
+//		return ::EnumObjects(self.hdc, nObjectType, lpfn as GOBJENUMPROC, lpData as LPVOID);
+//#endif
+	}
 //#endif // !_WIN32_WCE
 
 // Type-safe selection helpers
@@ -427,11 +441,12 @@ impl Inner {
 //#ifndef _WIN32_WCE
 		unsafe{
 			debug_assert!(hPen == 0 as HPEN || gdi32::GetObjectType(hPen as HGDIOBJ) == OBJ_PEN || gdi32::GetObjectType(hPen as HGDIOBJ) == OBJ_EXTPEN);
-		}
+		
 //#else // CE specific
 //		ATLASSERT(hPen == NULL || ::GetObjectType(hPen) == OBJ_PEN);
 //#endif // _WIN32_WCE
-		unsafe{gdi32::SelectObject(self.hdc, hPen as HGDIOBJ) as HPEN}
+			gdi32::SelectObject(self.hdc, hPen as HGDIOBJ) as HPEN
+		}
 	}
 
 	pub fn SelectBrush(&self,hBrush: HBRUSH)->HBRUSH {
@@ -876,7 +891,7 @@ impl Inner {
 		unsafe{gdi32::GetClipBox(self.hdc, lpRect)}
 	}
 
-	// fn GetClipRgn (&self,region: &mut CRgn)->c_int {
+	// pub fn GetClipRgn (&self,region: &mut CRgn)->c_int {
 	// 	self.assert_dc();
 	// 	if region.IsNull() == TRUE {
 	// 		region.CreateRectRgn(0, 0, 0, 0);
@@ -1492,7 +1507,7 @@ impl Inner {
 
 		TRUE
 	}
-*/
+	*/
 // Text Functions
 //#ifndef _WIN32_WCE
 	//fn TextOut(&self,x: c_int,y: c_int,lpszString: LPCTSTR,mut nCount: Option<c_int> /*= -1*/)->BOOL {
@@ -1648,60 +1663,33 @@ impl Inner {
 	}
 //#endif // !defined(_WIN32_WCE) || (_WIN32_WCE >= 400)
 
-	// fn GetTextFace(&self,lpszFacename: &String,nCount: c_int) -> c_int {
-	// 	self.assert_dc();
-	// 	//let s = lpszFacename.to_c_u16();
-	// 	let v:[u16; 128];
-	// 	let l = gdi32::GetTextFaceW(self.hdc, nCount, v.as_mut_ptr());
-	// 	//lpszFacename.from
-	// }
+	//fn GetTextFace(&self,lpszFacename: &String,nCount: c_int) -> c_int {
+	fn GetTextFace(&self) -> String {
+		self.assert_dc();
+		let l = self.GetTextFaceLen();
+		if l == 0 {
+			return String::new();
+		}
+		unsafe{
+			if l < 128 {
+				let mut v = [0u16; 128];
+				let l = gdi32::GetTextFaceW(self.hdc, l, v.as_mut_ptr());
+				String::from_utf16_lossy(v.as_ref())
+			}else{
+				let mut v: Vec<u16> = Vec::with_capacity(l as usize);
+				let l = gdi32::GetTextFaceW(self.hdc, l, v.as_mut_ptr());
+				String::from_utf16_lossy(v.as_ref())
+			}
+		}
+	}
 
 	pub fn GetTextFaceLen (&self) -> c_int {
 		self.assert_dc();
 		unsafe{gdi32::GetTextFaceW(self.hdc, 0, 0 as LPWSTR)}
 	}
 
-//#ifndef _ATL_NO_COM
-//#ifdef _OLEAUTO_H_
 	// fn GetTextFace (@BSTR& bstrFace)->BOOL {
-	// 	USES_CONVERSION;
-	// 	self.assert_dc();
-	// 	debug_assert!(bstrFace == NULL);
-
-	// 	c_int nLen = GetTextFaceLen();
-	// 	if(nLen == 0)
-	// 		return FALSE;
-
-	// 	CTempBuffer<TCHAR, _WTL_STACK_ALLOC_THRESHOLD> buff;
-	// 	LPTSTR lpszText = buff.Allocate(nLen);
-	// 	if(lpszText == NULL)
-	// 		return FALSE;
-
-	// 	if(!GetTextFace(lpszText, nLen))
-	// 		return FALSE;
-
-	// 	bstrFace = ::SysAllocString(T2OLE(lpszText));
-	// 	(bstrFace != NULL) ? TRUE : FALSE
-	// }
-//#endif
-//#endif // !_ATL_NO_COM
-
-//#if defined(_WTL_USE_CSTRING) || defined(__ATLSTR_H__)
 	// fn GetTextFace (@_CSTRING_NS::CString& strFace)->c_int {
-	// 	self.assert_dc();
-
-	// 	c_int nLen = GetTextFaceLen();
-	// 	if(nLen == 0)
-	// 		return 0;
-
-	// 	LPTSTR lpstr = strFace.GetBufferSetLength(nLen);
-	// 	if(lpstr == NULL)
-	// 		return 0;
-	// 	c_int nRet = GetTextFace(lpstr, nLen);
-	// 	strFace.ReleaseBuffer();
-	// 	nRet
-	// }
-//#endif // defined(_WTL_USE_CSTRING) || defined(__ATLSTR_H__)
 
 	pub fn GetTextMetrics(&self,lpMetrics: LPTEXTMETRICW)->BOOL {
 		self.assert_dc();
@@ -1864,18 +1852,18 @@ impl Inner {
 
 // MetaFile Functions
 //#ifndef _WIN32_WCE
-	//  fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
-	// 	self.assert_dc();
-	// 	if gdi32::GetDeviceCaps(self.hdc, TECHNOLOGY) == DT_METAFILE {
-	// 		// playing metafile in metafile, just use core windows API
-	// 		gdi32::PlayMetaFile(self.hdc, hMF)
-	// 	}
+	pub fn PlayMetaFile(&self,hMF: HMETAFILE)->BOOL {
+		self.assert_dc();
+		if unsafe{gdi32::GetDeviceCaps(self.hdc, TECHNOLOGY)} == DT_METAFILE {
+			// playing metafile in metafile, just use core windows API
+			return unsafe{gdi32::PlayMetaFile(self.hdc, hMF)}
+		}
 
-	// 	// for special playback, lParam == pDC
-	// 	gdi32::EnumMetaFile(self.hdc, hMF, EnumMetaFileProc, this as LPARAM)
-	// }
+		// for special playback, lParam == pDC
+		unsafe{gdi32::EnumMetaFile(self.hdc, hMF, Some(Self::EnumMetaFileProc), self as *const _ as LPARAM)}
+	}
 
-	pub fn PlayMetaFile(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT)->BOOL {
+	pub fn PlayMetaFile_enh(&self,hEnhMetaFile: HENHMETAFILE,lpBounds: LPCRECT)->BOOL {
 		self.assert_dc();
 		unsafe{gdi32::PlayEnhMetaFile(self.hdc, hEnhMetaFile, lpBounds)}
 	}
@@ -1885,11 +1873,12 @@ impl Inner {
 		unsafe{gdi32::GdiComment(self.hdc, nDataSize, pCommentData)}
 	}
 
-	/*
+	
 	// Special handling for metafile playback
-	static c_int CALLBACK EnumMetaFileProc(HDC hDC, HANDLETABLE* pHandleTable, METARECORD* pMetaRec, c_int nHandles, LPARAM lParam)
-	{
-		CDCHandle* pDC = (CDCHandle*)lParam;
+	unsafe extern "system" fn EnumMetaFileProc(hDC: HDC, pHandleTable: *const HANDLETABLE, pMetaRec: *const METARECORD, nHandles: c_int, lParam: LPARAM) -> c_int {
+		let pDC = &mut *(lParam as *mut CDCHandle);
+		/*
+		
 
 		switch (pMetaRec->rdFunction)
 		{
@@ -1970,10 +1959,10 @@ impl Inner {
 			::PlayMetaFileRecord(hDC, pHandleTable, pMetaRec, nHandles);
 			break;
 		}
-
+		*/
 		1
 	}
-	*/
+	
 //#endif // !_WIN32_WCE
 
 // Path Functions
