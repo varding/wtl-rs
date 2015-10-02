@@ -1875,7 +1875,7 @@ impl Inner {
 
 	
 	// Special handling for metafile playback
-	unsafe extern "system" fn EnumMetaFileProc(hDC: HDC, pHandleTable: *const HANDLETABLE, pMetaRec: *const METARECORD, nHandles: c_int, lParam: LPARAM) -> c_int {
+	unsafe extern "system" fn EnumMetaFileProc(hDC: HDC, pHandleTable: *mut HANDLETABLE, pMetaRec: *mut METARECORD, nHandles: c_int, lParam: LPARAM) -> c_int {
 		let pDC = &mut *(lParam as *mut CDCHandle);
 		/*
 		
