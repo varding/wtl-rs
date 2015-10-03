@@ -26,3 +26,13 @@ cargo build
 Uncomment line 5,6 in examples/hello_dialog/src/main.rs if you don't need the console.
 
 The project only be tested on win7 x64.
+
+Rescource
+=====
+Urls below might be help.
+
+* http://www.codeproject.com/Articles/3841/WTL-for-MFC-Programmers-Part-I-ATL-GUI-Classes
+* http://www.codeproject.com/Articles/3867/WTL-for-MFC-Programmers-Part-II-WTL-GUI-Base-Class
+* http://www.codeproject.com/Articles/3948/WTL-for-MFC-Programmers-Part-III-Toolbars-and-Stat
+* http://www.codeproject.com/Articles/4028/WTL-for-MFC-Programmers-Part-IV-Dialogs-and-Contro
+* http://www.codeproject.com/Articles/4029/WTL-for-MFC-Programmers-Part-V-Advanced-Dialog-UI

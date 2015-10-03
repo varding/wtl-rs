@@ -7,9 +7,11 @@ pub use self::static_msg::StcMsg;
 pub use self::list_box::ListBox;
 pub use self::combo_box::ComboBox;
 pub use self::combo_box_msg::CmbBoxMsg;
+pub use self::edit::Edit;
+pub use self::edit_msg::EdtMsg;
 //pub use self::tree_item::CTreeItem;
 pub use self::tree_view_ctrl::CTreeViewCtrl;
-pub use self::tree_view_ctrl_ex::CTreeViewCtrlEx;
+pub use self::tree_view_ctrl_ex::{CTreeViewCtrlEx,CTreeItem};
 
 
 mod consts;

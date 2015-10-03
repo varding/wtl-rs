@@ -23,6 +23,16 @@ pub struct CTreeViewCtrlEx {
 // 		return *this;
 // 	}
 impl CTreeViewCtrlEx {
+	pub fn new()->CTreeViewCtrlEx{
+		CTreeViewCtrlEx{
+			base: CTreeViewCtrl::new(),
+		}
+	}
+
+	pub fn Attach(&mut self,h: HWND) {
+		self.base.cwin.Attach(h);
+	}
+
 // Operations (overides that return CTreeItem)
 	pub fn InsertItem2(&self,lpInsertStruct: LPTVINSERTSTRUCTW,)->CTreeItem {
 		let hTreeItem = self.base.cwin.SendMessage(TVM_INSERTITEMW, 0, lpInsertStruct as LPARAM) as HTREEITEM;
@@ -418,9 +428,10 @@ impl<'a> CTreeItem<'a> {
 	// 	return self.pView.base.EditLabel(self.hItem);
 	// }
 
-	// pub fn CreateDragImage(&self,)->HIMAGELIST {
-	// 	return self.pView.base.CreateDragImage(self.hItem);
-	// }
+	pub fn CreateDragImage(&self,)->HIMAGELIST {
+		//return self.pView.base.CreateDragImage(self.hItem);
+		self.pView.base.cwin.SendMessage(TVM_CREATEDRAGIMAGE, 0, self.hItem as LPARAM) as HIMAGELIST
+	}
 
 	pub fn SortChildren(&self, bRecurse: BOOL /*= FALSE*/,)->BOOL {
 		return self.pView.base.SortChildren(self.hItem, Some(bRecurse));

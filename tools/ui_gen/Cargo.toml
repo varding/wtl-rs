@@ -1,0 +1,17 @@
+[package]
+name = "ui_gen"
+version = "0.1.0"
+authors = ["varding <deroculs@gmail.com>"]
+build = "build.rs"
+
+[[bin]]
+name = "ui_gen"
+path = "src/main.rs"
+
+[dependencies]
+winapi       = {version = "*",path = "../../pkg/winapi"}
+user32-sys   = {version = "*",path = "../../pkg/winapi/lib/user32-sys"}
+kernel32-sys = {version = "*",path = "../../pkg/winapi/lib/kernel32-sys"}
+shell32-sys  = {version = "*",path = "../../pkg/winapi/lib/shell32-sys"}
+wtl-rs       = {version = "*",path = "../../"}
+regex = "*"

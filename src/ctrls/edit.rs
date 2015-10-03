@@ -11,7 +11,7 @@ pub struct Edit {
 }
 
 impl Edit {
-    pub fn new(&self)->Edit{
+    pub fn new()->Edit{
         Edit{
             cwin: CWindow::new(NULL_HWND),
         }
@@ -656,6 +656,16 @@ impl Edit {
     pub fn SendNotifyMessage (&self,message:UINT,wParam:WPARAM,lParam:LPARAM) -> bool {
         self.cwin.SendNotifyMessage(message,wParam,lParam)
     }
+
+    #[inline(always)]
+	pub fn SetWindowText (&self, lpszString: &str) -> bool {
+		self.cwin.SetWindowText(lpszString)
+	}
+
+	#[inline(always)]
+	pub fn GetWindowText (&self) -> String {
+		self.cwin.GetWindowText()
+	}
 
     #[inline(always)]
     pub fn GetWindowTextLength (&self) -> c_int {

@@ -34,6 +34,11 @@ pub struct CTreeViewCtrl {
 // 		return WC_TREEVIEW;
 // 	}
 impl CTreeViewCtrl {
+	pub fn new()->CTreeViewCtrl{
+		CTreeViewCtrl{
+			cwin: CWindow::new(0 as HWND),
+		}
+	}
 	pub fn GetCount(&self,)->UINT {
 		self.cwin.SendMessage(TVM_GETCOUNT, 0, 0) as UINT
 	}
