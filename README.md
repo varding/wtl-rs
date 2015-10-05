@@ -27,7 +27,7 @@ Uncomment line 5,6 in examples/hello_dialog/src/main.rs if you don't need the co
 
 The project only be tested on win7 x64.
 
-Rescource
+Resource
 =====
 Urls below might be help.
 

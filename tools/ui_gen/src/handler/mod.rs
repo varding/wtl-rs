@@ -4,3 +4,4 @@ pub use self::rc::RcFile;
 
 mod main_dialog;
 mod rc;
+pub mod system;

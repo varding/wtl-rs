@@ -394,12 +394,14 @@ impl CWindow {
             let mut pszText = [0u16; 128];
             let nRead = unsafe{user32::GetWindowTextW(h, pszText.as_mut_ptr(), nLength)};
             debug_assert!(nRead == nLength - 1);
-            String::from_utf16_lossy(pszText.as_ref())
+            String::from_utf16_lossy(&pszText[..nLength as usize].as_ref())
         }else{
             let mut pszText: Vec<u16> = Vec::with_capacity(nLength as usize);
+            unsafe{pszText.set_len(nLength as usize)};
             let nRead = unsafe{user32::GetWindowTextW(h, pszText.as_mut_ptr(), nLength)};
+            //pszText[nRead as usize - 1] = 0;
             debug_assert!(nRead == nLength - 1);
-            String::from_utf16_lossy(pszText.as_ref())
+            String::from_utf16_lossy(&pszText[..nRead as usize].as_ref())
         }
     }
 

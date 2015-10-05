@@ -205,7 +205,9 @@ impl<'a> CTreeItem<'a> {
 
 // 	BOOL operator !() { return m_hTreeItem == NULL; }
 
-// 	pub fn IsNull(&self,)->BOOL { return m_hTreeItem == NULL; }
+ 	pub fn IsNull(&self)->bool {
+ 		return self.hItem == 0 as HTREEITEM 
+ 	}
 	
 
 
@@ -446,11 +448,6 @@ impl<'a> CTreeItem<'a> {
 		ins.hParent = self.hItem;
 		ins.hInsertAfter = hItemAfter;
 		ins.itemex.mask = TVIF_TEXT;
-		// if let Some(s) = lpstrItem {
-		// 	ins.item.pszText = s.to_c_u16().as_ptr();
-		// }else{
-		// 	ins.item.pszText = 0 as LPCWSTR;
-		// }
 		ins.itemex.pszText = lpstrItem.to_c_u16().as_mut_ptr();
 
 		if nImageIndex != -1 {

@@ -4,7 +4,7 @@ use atl::{CWindow,NULL_HWND};
 use winapi::*;
 //use user32::*;
 use super::consts::*;
-
+use misc::ToCU16Str;
 /*
 (1)
 ^\t(\w+)\s+(\w+)\((.*)\)\s+\{
@@ -80,6 +80,11 @@ impl ListBox {
 // 		return _T("LISTBOX");
 // 	}
 
+	pub fn new()->ListBox{
+		ListBox{
+			cwin: CWindow::new(NULL_HWND),
+		}
+	}
 	// for entire listbox
 	pub fn GetCount (&self)->c_int {
 		self.assert_window();
@@ -222,10 +227,17 @@ impl ListBox {
 		self.SendMessage( LB_GETITEMRECT, nIndex as WPARAM, lpRect as LPARAM) as c_int
 	}
 
-	// pub fn GetText (&self,nIndex: c_int, lpszBuffer: LPTSTR)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_GETTEXT, nIndex, lpszBuffer as LPARAM) as c_int
-	// }
+	pub fn GetText (&self, nIndex: c_int)->String {
+		self.assert_window();
+		let nLen = self.GetTextLen(nIndex) as usize;
+		//println!("{}", nLen);
+		let mut buff:Vec<u16> = Vec::with_capacity(nLen+1);
+		unsafe{buff.set_len(nLen+1)};
+		let nRead = self.SendMessage( LB_GETTEXT, nIndex as WPARAM, buff.as_mut_ptr() as LPARAM);
+		//println!("{}", nRead);
+		//buff[nRead as usize] = 0;
+		String::from_utf16_lossy(&buff[..nRead as usize].as_ref())
+	}
 
 // #ifndef _ATL_NO_COM
 // #ifdef _OLEAUTO_H_
@@ -327,48 +339,55 @@ impl ListBox {
 	}
 
 	// manipulating listbox items
-	// pub fn AddString(&self,lpszItem: LPCTSTR)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_ADDSTRING, 0, lpszItem as LPARAM) as c_int
-	// }
+	pub fn AddString(&self,lpszItem: &str)->c_int {
+		self.assert_window();
+		let s = lpszItem.to_c_u16();
+		self.SendMessage( LB_ADDSTRING, 0, s.as_ptr() as LPARAM) as c_int
+	}
 
 	pub fn DeleteString(&self,nIndex: UINT)->c_int {
 		self.assert_window();
 		self.SendMessage( LB_DELETESTRING, nIndex as WPARAM, 0) as c_int
 	}
 
-	// pub fn InsertString (c_int nIndex, LPCTSTR lpszItem)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_INSERTSTRING, nIndex, lpszItem as LPARAM) as c_int
-	// }
+	pub fn InsertString (&self, nIndex: c_int, lpszItem: &str)->c_int {
+		self.assert_window();
+		let s = lpszItem.to_c_u16();
+		self.SendMessage( LB_INSERTSTRING, nIndex as WPARAM, s.as_ptr() as LPARAM) as c_int
+	}
 
 //#ifndef _WIN32_WCE
-	// pub fn Dir (UINT attr, LPCTSTR lpszWildCard)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_DIR, attr, lpszWildCard as LPARAM) as c_int
-	// }
+	pub fn Dir (&self, attr: UINT, lpszWildCard: &str)->c_int {
+		self.assert_window();
+		let s = lpszWildCard.to_c_u16();
+		self.SendMessage( LB_DIR, attr as WPARAM, s.as_ptr() as LPARAM) as c_int
+	}
 
-	// pub fn AddFile(&self,lpstrFileName: LPCTSTR)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_ADDFILE, 0, lpstrFileName as LPARAM) as c_int
-	// }
+	pub fn AddFile(&self,lpstrFileName: &str)->c_int {
+		self.assert_window();
+		let s = lpstrFileName.to_c_u16();
+		self.SendMessage( LB_ADDFILE, 0, s.as_ptr() as LPARAM) as c_int
+	}
 //#endif // !_WIN32_WCE
 
 	// selection helpers
-	// pub fn FindString (c_int nStartAfter, LPCTSTR lpszItem)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_FINDSTRING, nStartAfter, lpszItem as LPARAM) as c_int
-	// }
+	pub fn FindString (&self, nStartAfter: c_int, lpszItem: &str)->c_int {
+		self.assert_window();
+		let s = lpszItem.to_c_u16();
+		self.SendMessage( LB_FINDSTRING, nStartAfter as WPARAM, s.as_ptr() as LPARAM) as c_int
+	}
 
-	// pub fn FindStringExact (c_int nIndexStart, LPCTSTR lpszFind)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_FINDSTRINGEXACT, nIndexStart, lpszFind as LPARAM) as c_int
-	// }
+	pub fn FindStringExact (&self, nIndexStart: c_int, lpszFind: &str)->c_int {
+		self.assert_window();
+		let s = lpszFind.to_c_u16();
+		self.SendMessage( LB_FINDSTRINGEXACT, nIndexStart as WPARAM, s.as_ptr() as LPARAM) as c_int
+	}
 
-	// pub fn SelectString (c_int nStartAfter, LPCTSTR lpszItem)->c_int {
-	// 	self.assert_window();
-	// 	self.SendMessage( LB_SELECTSTRING, nStartAfter, lpszItem as LPARAM) as c_int
-	// }
+	pub fn SelectString (&self, nStartAfter: c_int, lpszItem: &str)->c_int {
+		self.assert_window();
+		let s = lpszItem.to_c_u16();
+		self.SendMessage( LB_SELECTSTRING, nStartAfter as WPARAM, s.as_ptr() as LPARAM) as c_int
+	}
 
 	pub fn SelItemRange (&self,bSelect: BOOL, nFirstItem: c_int, nLastItem: c_int)->c_int {
 		self.assert_window();

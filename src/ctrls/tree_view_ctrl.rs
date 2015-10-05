@@ -95,6 +95,7 @@ impl CTreeViewCtrl {
 		loop{
 			let mut v: Vec<u16> = Vec::with_capacity(nLen);
 			unsafe{v.set_len(nLen)}
+			//v = unsafe{mem::zeroed()};
 			v[0] = 0;
 			v[nLen - 2] = 0;
 			item.pszText = v.as_mut_ptr();
@@ -102,8 +103,16 @@ impl CTreeViewCtrl {
 
 			let nRet = self.cwin.SendMessage(TVM_GETITEMW, 0, &item as *const _ as LPARAM) as BOOL;
 			// at least an unused space
-			if nRet == 0 || v[nLen - 2] == 0 {
-				return String::from_utf16_lossy(v.as_ref());
+			if nRet > 0 || v[nLen - 2] == 0 {
+				let mut pos = 0;
+				for d in &v {
+					if *d == 0 {
+						break;
+					}
+					pos += 1;
+				}
+				//unsafe{v.set_len(pos+1)};
+				return String::from_utf16_lossy(&v[..pos].as_ref());
 			}
 			nLen *= 2;
 		}
