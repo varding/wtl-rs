@@ -406,8 +406,8 @@ impl<'a> CTreeItem<'a> {
 		return self.pView.base.DeleteItem(self.hItem);
 	}
 
-	pub fn Expand(&self,nCode: UINT /*= TVE_EXPAND*/,)->BOOL {
-		return self.pView.base.Expand(self.hItem,Some(nCode));
+	pub fn Expand(&self,nCode: Option<UINT> /*= TVE_EXPAND*/,)->BOOL {
+		return self.pView.base.Expand(self.hItem,nCode);
 	}
 
 	pub fn Select(&self,nCode: UINT,)->BOOL {

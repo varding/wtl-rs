@@ -2,13 +2,13 @@ use regex::Regex;
 use super::Dialog;
 use std::path::PathBuf;
 
-pub struct Root {
+pub struct RcRoot {
     dlgs: Vec<Dialog>,
 }
 
-impl Root {
-	pub fn new()->Root{
-		Root{
+impl RcRoot {
+	pub fn new()->RcRoot{
+		RcRoot{
 			dlgs: Vec::new(),
 		}
 	}
@@ -31,7 +31,7 @@ impl Root {
 }
 
 
-impl Root {
+impl RcRoot {
 	pub fn write_files(&self){
 		let mut cur_path = PathBuf::from(".");
 		for d in &self.dlgs {
@@ -39,7 +39,7 @@ impl Root {
 		}
 	}
 
-	pub fn write_root_file(&self) {
+	pub fn write_Rcroot_file(&self) {
 
 	}
 
@@ -56,9 +56,9 @@ impl Root {
 /*
 ui structure
 
-mod.rs    root.rs  			root(dir)
+mod.rs    Rcroot.rs  			Rcroot(dir)
 							  / | \
-				   main_dlg.rs  main_dlg(dir)  ...(other child of root and their child dir)
+				   main_dlg.rs  main_dlg(dir)  ...(other child of Rcroot and their child dir)
 				   				/ | \
 				   			 children of main_dlg
 

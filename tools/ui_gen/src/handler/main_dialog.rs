@@ -1,25 +1,25 @@
 
-use ui::Root;
+use ui;
 use user32;
 use winapi::*;
-use super::RcFile;
+use super::{RcFile,RcRoot};
 use std::path::{Path,PathBuf};
 use std::rc::Rc;
 use std::cell::RefCell;
 use wtl::ctrls::CTreeItem;
 
 pub struct MainDlgHandler{
-    rc_file: Rc<RefCell<RcFile>>,
+    rc_root: Rc<RefCell<RcRoot>>,
 }
 
 impl MainDlgHandler {
     pub fn new()->MainDlgHandler {
         MainDlgHandler{
-            rc_file: Rc::new(RefCell::new(RcFile)),
+            rc_root: Rc::new(RefCell::new(RcRoot::new())),
         }
     }
 
-	pub fn register_handler(&self, r: &mut Root) {
+	pub fn register_handler(&self, r: &mut ui::Root) {
 		r.main_dlg.this_msg().on_init_dialog(|_,t|{
             println!("hello main dlg");
             t.main_dlg.this.SetWindowText("GUI Generator");
@@ -32,12 +32,13 @@ impl MainDlgHandler {
             t.main_dlg.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\del\\mhc.rc");
         });
 
-        let rf1 = self.rc_file.clone();
+        let rt1 = self.rc_root.clone();
 		r.main_dlg.btn_parse_msg().on_click(move|_,t|{
-            let rf = rf1.borrow_mut();
+            let rf = RcFile;
             let p = t.main_dlg.edt_rc_path.GetWindowText();
-            let dlg_ids = rf.parse_rc(&p);
-            
+            let (dlg_ids,r) = rf.parse_rc(&p);
+            *rt1.borrow_mut() = r;
+
             for id in &dlg_ids {
                 t.main_dlg.lst_all_dlgs.AddString(id);
             }
@@ -47,9 +48,7 @@ impl MainDlgHandler {
             rf.parse_header(header_path.to_str().unwrap());
 		});
 
-        let rf2 = self.rc_file.clone();
-        r.main_dlg.btn_select_msg().on_click(move|_,t|{
-            let rf = rf2.borrow_mut();
+        r.main_dlg.btn_select_msg().on_click(|_,t|{
             //get selected list item
             let lst_sel = t.main_dlg.lst_all_dlgs.GetCurSel();
             if lst_sel == -1 {
@@ -60,12 +59,12 @@ impl MainDlgHandler {
             //let tree_sel_txt = t.main_dlg.dlg_tree.GetSelectedItem().GetText();
             let item = t.main_dlg.dlg_tree.GetSelectedItem();
             item.AddTail(&lst_sel_txt[..],-1);
-            //println!("lst sel:{}, txt:{}", lst_sel,lst_sel_txt);
-            //println!("tree sel: {}", tree_sel_txt);
+            //expand the button of a new item manually
+            //http://www.go4expert.com/forums/i-refresh-expand-sign-treeview-control-t15764/
+            item.Expand(None);
         });
 
-        let rf3 = self.rc_file.clone();
-        r.main_dlg.btn_unselect_msg().on_click(move|_,t|{
+        r.main_dlg.btn_unselect_msg().on_click(|_,t|{
             let item = t.main_dlg.dlg_tree.GetSelectedItem();
             let sel_txt = item.GetText();
 
@@ -74,9 +73,16 @@ impl MainDlgHandler {
                 t.main_dlg.lst_all_dlgs.AddString(&s[..]);
             }
         });
+
+        let rt2 = self.rc_root.clone();
+        r.main_dlg.btn_generate_msg().on_click(move|_,t|{
+            let rt = rt2.borrow_mut();
+        });
 	}
 }
 
+////////////////////////////////////////////
+// unselect
 fn delete_child(item: &CTreeItem,item_strings: &mut Vec<String>)->bool {
     if item.IsNull() {
         return false;
@@ -102,3 +108,14 @@ fn delete_tree(item: &CTreeItem) ->Vec<String> {
 
     item_strings
 }
+
+
+/////////////////////////////////////////////
+// 
+// fn visit_child(item: &CTreeItem)->String{
+
+// }
+
+// fn visit_tree(){
+
+// }

@@ -9,6 +9,7 @@ pub struct MainDialog<T> {
     pub btn_parse: Button,
     pub btn_select: Button,
     pub btn_unselect: Button,
+    pub btn_generate: Button,
     pub edt_rc_path: Edit,
 }
 
@@ -21,6 +22,7 @@ impl<T> MainDialog<T> {
 			btn_parse: Button::new(),
 			btn_select: Button::new(),
 			btn_unselect: Button::new(),
+			btn_generate: Button::new(),
 			edt_rc_path: Edit::new(),
 		}
 	}
@@ -44,5 +46,9 @@ impl<T> MainDialog<T> {
 
 	pub fn btn_unselect_msg(&mut self)->BtnMsg<T> {
 		self.this.btn_handler(1004)
+	}
+
+	pub fn btn_generate_msg(&mut self)->BtnMsg<T> {
+		self.this.btn_handler(1007)
 	}
 }

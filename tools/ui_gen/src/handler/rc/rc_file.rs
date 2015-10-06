@@ -7,7 +7,7 @@ use std::slice;
 
 use regex::Regex;
 
-use super::Root;
+use super::RcRoot;
 pub struct RcFile;
 
 impl RcFile {
@@ -68,12 +68,12 @@ impl RcFile {
 		}
 	}
 
-	pub fn parse_rc(&self, name: &str) ->Vec<String> {
+	pub fn parse_rc(&self, name: &str) ->(Vec<String>,RcRoot) {
 		let buf: Vec<u8>;
 		if let Some(b) = self.read_file(name) {
 			buf = b;
 		}else{
-			return Vec::new();
+			return (Vec::new(),RcRoot::new());
 		}
 
 		let txt = self.decode(buf);
@@ -98,9 +98,9 @@ impl RcFile {
 		self.save_as_utf8(name, "utf8\\ui.h", &txt);
 	}
 
-	fn extract_rc(&self, txt: &String)->Vec<String> {
+	fn extract_rc(&self, txt: &String)->(Vec<String>,RcRoot) {
 		let mut dlg_ids: Vec<String> = Vec::new();
-		let mut r = Root::new();
+		let mut r = RcRoot::new();
 		//let re_id = Regex::new(r"\w+\s+DIALOGEX").unwrap();
 		let re_begin = Regex::new(r"\w+\s+DIALOGEX").unwrap();
 		let re_end = Regex::new(r"\sEND\s").unwrap();
@@ -121,7 +121,7 @@ impl RcFile {
 				println!("not block end?");
 			}
 		}
-		dlg_ids
+		(dlg_ids,r)
 	}
 
 	//comments and strings must be deleted first,especially strings.they may contain key words like:BEGIN,END
