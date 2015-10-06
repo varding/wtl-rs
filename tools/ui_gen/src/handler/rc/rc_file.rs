@@ -1,5 +1,5 @@
 
-use std::fs::File;
+use std::fs::{File,self};
 use std::io::{Read,Write};
 use std::path::{Path,PathBuf};
 use std::slice;
@@ -47,6 +47,9 @@ impl RcFile {
 		//new_path.push("utf8");
 		new_path.push(new_name);
 		//println!("{:?}", new_path);
+		
+		//create dir first
+		fs::create_dir_all(new_path.as_path().parent().unwrap().clone());
 
 		let mut new_file = File::create(new_path).unwrap();
 		new_file.write(txt.as_ref()).expect("save utf8 fail");
@@ -68,12 +71,12 @@ impl RcFile {
 		}
 	}
 
-	pub fn parse_rc(&self, name: &str) ->(Vec<String>,RcRoot) {
+	pub fn parse_rc(&self, name: &str) ->RcRoot {
 		let buf: Vec<u8>;
 		if let Some(b) = self.read_file(name) {
 			buf = b;
 		}else{
-			return (Vec::new(),RcRoot::new());
+			return RcRoot::new();
 		}
 
 		let txt = self.decode(buf);
@@ -98,30 +101,27 @@ impl RcFile {
 		self.save_as_utf8(name, "utf8\\ui.h", &txt);
 	}
 
-	fn extract_rc(&self, txt: &String)->(Vec<String>,RcRoot) {
-		let mut dlg_ids: Vec<String> = Vec::new();
+	fn extract_rc(&self, txt: &String)->RcRoot {
 		let mut r = RcRoot::new();
-		//let re_id = Regex::new(r"\w+\s+DIALOGEX").unwrap();
 		let re_begin = Regex::new(r"\w+\s+DIALOGEX").unwrap();
 		let re_end = Regex::new(r"\sEND\s").unwrap();
 		for pos in re_begin.find_iter(txt) {
 			let (start,_) = pos;
-			//println!("new block, from: {} to: {}", start,end);
 
 			let s = &txt[start..];
-			dlg_ids.push(s.split_whitespace().next().unwrap().to_string());
+			let dlg_id = s.split_whitespace().next().unwrap();
 
 			if let Some(end_pos) = re_end.find(s) {
 				let block_end = end_pos.0 + 4;
 				let dlg_block = &s[..block_end];
 				//println!("{}", dlg_block);
 				//println!("block end:{}\n", block_end + start);
-				r.parse_dialog(dlg_block);
+				r.parse_dialog(dlg_id,dlg_block);
 			}else{
 				println!("not block end?");
 			}
 		}
-		(dlg_ids,r)
+		r
 	}
 
 	//comments and strings must be deleted first,especially strings.they may contain key words like:BEGIN,END

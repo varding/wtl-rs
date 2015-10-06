@@ -1,31 +1,72 @@
 use regex::Regex;
 use super::Dialog;
 use std::path::PathBuf;
-
+use std::collections::HashMap;
+//use std::fmt;
+#[derive(Debug)]
 pub struct RcRoot {
-    dlgs: Vec<Dialog>,
+    pub dlgs: HashMap<String,Box<Dialog>>,
 }
+
+// impl fmt::Display for RcRoot {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//     	let r = write!(f,"Root");
+//         for (id,_) in &self.dlgs {
+//         	println!("{}", id);
+//         }
+//         r
+//     }
+// }
 
 impl RcRoot {
 	pub fn new()->RcRoot{
 		RcRoot{
-			dlgs: Vec::new(),
+			dlgs: HashMap::new(),
 		}
 	}
 
-	pub fn parse_dialog(&mut self,data: &str){
-		let re_dlg_name = Regex::new(r"(\w+)\s+DIALOGEX").unwrap();
-		let mut dlg: Dialog;
-		if let Some(cap) = re_dlg_name.captures(data) {
-			dlg = Dialog::new(cap.at(1).unwrap());
-		}else{
-			return;
-		}
-
+	pub fn parse_dialog(&mut self,id: &str, data: &str){
+		let mut dlg = Box::new(Dialog::new(id));
 		let re_begin = Regex::new(r"\sBEGIN\s").unwrap();
 		if let Some(begin_pos) = re_begin.find(data) {
 			let ctrl_begin = begin_pos.1;
-			dlg.parser_dialog(&data[ctrl_begin..data.len() - 3]);	//delte "END"
+			dlg.parser_ctrls(&data[ctrl_begin..data.len() - 3]);	//delte "END"
+		}
+		self.dlgs.insert(id.to_string(), dlg);
+	}
+
+	//set the 
+	pub fn make_path(&mut self, id: &str, p: &mut Vec<String>) {
+		//assert!(p.pop() = Some("Root".to_string()));
+		let r = p.pop().expect("root should be pushed");
+		assert!(r == "Root");
+
+		println!("p:{:?}", p);
+		if p.len() == 0 {
+			return;
+		}
+		//println!("{:?}", p);
+		// if p.len() == 1 {
+		// 	//dialogs that belongs to the root
+		// 	assert!(self.dlgs.contains_key(&p[0]));
+		// 	return;
+		// }
+
+		let dlg_name = p.pop().unwrap();
+
+		let child = self.dlgs.remove(id).expect("dlg in root should exist");
+
+		let dlg = self.dlgs.get_mut(&dlg_name[..]).expect("dlg should exist");
+	
+		let mut direct_parent_dlg = dlg.make_path(p).expect("parent dlg should be found");
+
+		direct_parent_dlg.add_child(id,child);
+	}
+
+	pub fn print(&self) {
+		println!("Root");
+		for (_,d) in &self.dlgs {
+			d.print(1);
 		}
 	}
 }
@@ -33,8 +74,9 @@ impl RcRoot {
 
 impl RcRoot {
 	pub fn write_files(&self){
-		let mut cur_path = PathBuf::from(".");
-		for d in &self.dlgs {
+		let mut cur_path = PathBuf::from(".\\ui");
+		println!("cur path: {:?}", cur_path);
+		for (_,d) in &self.dlgs {
 			d.write_file(&mut cur_path);
 		}
 	}

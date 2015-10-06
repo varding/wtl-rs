@@ -609,13 +609,13 @@ impl <'a,T> HandlerPriority<'a,T> {
     }
 
     /// low priority,p range from 0 ~ 32767(0x7FFF),and real priority range from 32768 ~ 65535
-    pub fn set_low_priority(&mut self,p:u16){
+    pub fn set_user_priority(&mut self,p:u16){
         debug_assert!(p < 8000);
         self.h.priority = p + 8000;        //32767
     }
 
     /// high priority, p range from 0 ~ 32767,and real priority range from 0 ~ 32767
-    pub fn set_high_priority(&mut self,p:u16){
+    pub fn set_system_priority(&mut self,p:u16){
         debug_assert!(p < 8000);
         self.h.priority = p;
     }

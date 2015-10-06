@@ -161,6 +161,13 @@ impl CTreeViewCtrlEx {
 		let hTreeItem = self.base.cwin.SendMessage(TVM_MAPACCIDTOHTREEITEM, uID as WPARAM, 0) as HTREEITEM;
 		CTreeItem::new(hTreeItem, self)
 	}
+
+
+	//expose functions of base
+	#[inline(always)]
+	pub fn DeleteAllItems(&self) {
+		self.base.DeleteAllItems();
+	}
 //#endif // (_WIN32_WINNT >= 0x0501)
 }
 
@@ -410,11 +417,11 @@ impl<'a> CTreeItem<'a> {
 		return self.pView.base.Expand(self.hItem,nCode);
 	}
 
-	pub fn Select(&self,nCode: UINT,)->BOOL {
+	pub fn Select_code(&self,nCode: UINT,)->BOOL {
 		return self.pView.base.Select(self.hItem,nCode);
 	}
 
-	pub fn Select_item(&self,)->BOOL {
+	pub fn Select(&self,)->BOOL {
 		return self.pView.base.SelectItem(self.hItem);
 	}
 

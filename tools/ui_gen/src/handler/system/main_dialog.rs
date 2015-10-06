@@ -29,6 +29,6 @@ impl MainDlgHandler {
             t.main_dlg.btn_unselect.Attach(this.GetDlgItem(1004));
             t.main_dlg.edt_rc_path.Attach(t.main_dlg.this.GetDlgItem(1006));
             t.main_dlg.lst_all_dlgs.Attach(t.main_dlg.this.GetDlgItem(1001));
-        }).set_high_priority(0);
+        }).set_system_priority(0);
 	}
 }

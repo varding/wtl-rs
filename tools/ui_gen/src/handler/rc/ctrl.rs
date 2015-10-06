@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::Write;
 
 #[derive(Debug)]
 struct Ctrl {
@@ -148,22 +150,40 @@ impl Control {
 	}
 
 
-	pub fn write(&self)->String{
+	pub fn write_file(&self,f: &mut File){
 		match *self {
 			Control::Button(ref c)=>{
-				format!("{}: Button,",convert_id(&c.id[..]))
-			}
-			Control::Edit(ref c)=>{
-				format!("{}: Edit,",convert_id(&c.id[..]))
-			}
-			Control::TreeView(ref c)=>{
-				format!("{}: TreeViewEx,",convert_id(&c.id[..]))
+				writeln!(f,"\tpub {}: Button,",convert_id(&c.id[..])).unwrap();
 			}
 			Control::ComboBox(ref c)=>{
-				format!("{}: ComboBox,",convert_id(&c.id[..]))
+				writeln!(f,"\tpub {}: ComboBox,",convert_id(&c.id[..])).unwrap();
+			}
+			Control::Edit(ref c)=>{
+				writeln!(f,"\tpub {}: Edit,",convert_id(&c.id[..])).unwrap();
+			}
+			Control::TreeView(ref c)=>{
+				writeln!(f,"\tpub {}: TreeViewEx,",convert_id(&c.id[..])).unwrap();
+			}
+			Control::Static(ref c)=>{
+				//only id!=static can be display
+				let id = convert_id(&c.id[..]);
+				if id != "static" {
+					writeln!(f,"\tpub {}: Static,",id).unwrap();
+				}
+			}
+			Control::GroupBox(ref c)=>{
+				//only id!=static can be display
+				let id = convert_id(&c.id[..]);
+				if id != "static" {
+					writeln!(f,"\tpub {}: GroupBox,",id).unwrap();
+				}
+			}
+			Control::UnKnow(ref s)=>{
+				writeln!(f,"\t// {}: UnKnow,",s).unwrap();
 			}
 			_=>{
-				String::new()
+				//String::new()
+				//writeln!(f,"// pub {}")
 			}
 		}
 	}
