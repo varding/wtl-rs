@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::Write;
-
+use super::util::*;
 #[derive(Debug)]
 struct Ctrl {
 	id : String,
@@ -24,6 +24,9 @@ impl Ctrl {
 	// 	}
 	// }
 
+	////////////////////
+	// common controls
+	//CONTROL         "work",IDC_RADIO_WORK,"Button",BS_AUTORADIOBUTTON,17,188,32,10
 	fn new_radio_button(id: &str, style: &Vec<String>)->Ctrl{
 		Ctrl{
 			id: id.to_string(),
@@ -32,6 +35,16 @@ impl Ctrl {
 		}	
 	}
 
+	//CONTROL         "",IDC_TREE_SELECTED_DLGS,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_BORDER | WS_HSCROLL | WS_TABSTOP,202,19,154,112
+	fn new_tree_view(id: &str, style: &Vec<String>)->Ctrl {
+		Ctrl{
+			id: id.to_string(),
+			style: style.clone(),
+		}
+	}
+
+	/////////////////////////////////////
+	//named controls
 	//PUSHBUTTON      "open",IDC_BTN_OPEN_UDP_PORT,91,16,50,14
 	fn new_push_button(line: &str)->Ctrl{
 		let l = line.trim();
@@ -41,6 +54,18 @@ impl Ctrl {
 			id: v[1].to_string(),
 			//class: "PUSHBUTTON".to_string(),
 			style: Vec::new(),
+		}
+	}
+
+	//LISTBOX         IDC_LST_ALL_DLGS,7,19,142,112,LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+	fn new_list_box(line: &str)->Ctrl {
+		let l = line.trim();
+		let v:Vec<&str> = l.split(',').collect();
+		assert!(v.len() >= 6);
+		Ctrl{
+			id: v[0].to_string(),
+			//class: "PUSHBUTTON".to_string(),
+			style: v[5].split("|").map(|s|s.trim().to_string()).collect(),
 		}
 	}
 
@@ -71,6 +96,7 @@ impl Ctrl {
 	//LTEXT           "port",IDC_STATIC,21,67,25,8
 	fn new_ltext(line: &str)->Ctrl{
 		let l = line.trim();
+		//FIXME: string may contain comma,so this should be improved
 		let v:Vec<&str> = l.split(',').collect();
 		assert!(v.len() >= 2);
 		Ctrl{
@@ -91,6 +117,27 @@ impl Ctrl {
 			style: Vec::new(),
 		}
 	}
+
+	// fn split_by_comma(&self,data: &str)->Vec<&str> {
+	// 	let mut state = 0;		//0=>normal,1=>string
+	// 	let mut start = 0;
+	// 	let mut end = 0;
+	// 	let v: Vec<&str> = Vec::new();
+	// 	for d in data {
+	// 		if state == 0 {
+	// 			if d == '\"' {
+	// 				state = 1;
+	// 			}
+	// 		}else {
+	// 			if d == '\"' {
+	// 				state = 0;
+	// 			}else if d == ',' {
+
+	// 			}
+	// 		}
+	// 		end += 1;
+	// 	}
+	// }
 }
 
 #[derive(Debug)]
@@ -117,6 +164,8 @@ impl Control {
 			Self::parse_control(take_rest("CONTROL",line))
 		}else if line.starts_with("PUSHBUTTON") {
 			Control::Button(Ctrl::new_push_button(take_rest("PUSHBUTTON", line)))
+		}else if line.starts_with("LISTBOX") {
+			Control::ListBox(Ctrl::new_list_box(take_rest("LISTBOX", line)))
 		}else if line.starts_with("COMBOBOX") {
 			Control::ComboBox(Ctrl::new_combobox(take_rest("COMBOBOX", line)))
 		}else if line.starts_with("EDITTEXT") {
@@ -131,6 +180,7 @@ impl Control {
 	}
 
 	//CONTROL         "work",IDC_RADIO_WORK,"Button",BS_AUTORADIOBUTTON,17,188,32,10
+	//CONTROL         "",IDC_TREE_SELECTED_DLGS,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_BORDER | WS_HSCROLL | WS_TABSTOP,202,19,154,112
 	fn parse_control(data: &str)->Control{
 		let l = data.trim();
 		let v:Vec<&str> = l.split(',').collect();
@@ -140,40 +190,56 @@ impl Control {
 		assert!(v.len() >= 4);
 		let style = v[3].split("|").map(|s|s.trim().to_string()).collect();
 
-		for s in &style {
-			if s == "BS_AUTORADIOBUTTON"{
-				
-				return Control::RadioBtn(Ctrl::new_radio_button(v[1], &style));
+		let class_name = v[2].replace("\"","");
+		//class
+		match class_name.trim() {
+			"Button"=>{
+				for s in &style {
+					if s == "BS_AUTORADIOBUTTON"{
+						return Control::RadioBtn(Ctrl::new_radio_button(v[1], &style));
+					}
+				}
+				return Control::UnKnow(data.to_string());
+			}
+			"SysTreeView32"=>{
+				println!("tree view");
+				return Control::TreeView(Ctrl::new_tree_view(v[1], &style));
+			}
+			_=>{
+				return Control::UnKnow(data.to_string());
 			}
 		}
-		Control::UnKnow(data.to_string())
 	}
+}
 
-
-	pub fn write_file(&self,f: &mut File){
+impl Control {
+	pub fn write_declaration(&self,f: &mut File){
 		match *self {
 			Control::Button(ref c)=>{
-				writeln!(f,"\tpub {}: Button,",convert_id(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: Button,",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::ListBox(ref c)=>{
+				writeln!(f,"\tpub {}: ListBox,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::ComboBox(ref c)=>{
-				writeln!(f,"\tpub {}: ComboBox,",convert_id(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: ComboBox,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::Edit(ref c)=>{
-				writeln!(f,"\tpub {}: Edit,",convert_id(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: Edit,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::TreeView(ref c)=>{
-				writeln!(f,"\tpub {}: TreeViewEx,",convert_id(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: TreeViewEx,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::Static(ref c)=>{
 				//only id!=static can be display
-				let id = convert_id(&c.id[..]);
+				let id = ctrl_id_to_name(&c.id[..]);
 				if id != "static" {
 					writeln!(f,"\tpub {}: Static,",id).unwrap();
 				}
 			}
 			Control::GroupBox(ref c)=>{
 				//only id!=static can be display
-				let id = convert_id(&c.id[..]);
+				let id = ctrl_id_to_name(&c.id[..]);
 				if id != "static" {
 					writeln!(f,"\tpub {}: GroupBox,",id).unwrap();
 				}
@@ -187,13 +253,90 @@ impl Control {
 			}
 		}
 	}
-}
 
+	pub fn write_new(&self,f: &mut File){
+		match *self {
+			Control::Button(ref c)=>{
+				writeln!(f,"\t\t\t{}: Button::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::ListBox(ref c)=>{
+				writeln!(f,"\t\t\t{}: ListBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::ComboBox(ref c)=>{
+				writeln!(f,"\t\t\t{}: ComboBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::Edit(ref c)=>{
+				writeln!(f,"\t\t\t{}: Edit::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::TreeView(ref c)=>{
+				writeln!(f,"\t\t\t{}: TreeViewEx::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::Static(ref c)=>{
+				//only id!=static can be display
+				let id = ctrl_id_to_name(&c.id[..]);
+				if id != "static" {
+					writeln!(f,"\t\t\t{}: Static::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				}
+			}
+			Control::GroupBox(ref c)=>{
+				//only id!=static can be display
+				let id = ctrl_id_to_name(&c.id[..]);
+				if id != "static" {
+					writeln!(f,"\t\t\t{}: GroupBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				}
+			}
+			Control::UnKnow(..)=>{
+				//writeln!(f,"\t\t\t// {}: UnKnow,",s).unwrap();
+			}
+			_=>{
+				//String::new()
+				//writeln!(f,"// pub {}")
+			}
+		}
+	}
 
-fn convert_id(id: &str)->String {
-	if id.starts_with("IDC_") {
-		id[4..].to_lowercase()
-	}else{
-		id.to_lowercase()
+	pub fn write_msg(&self,f: &mut File){
+		match *self {
+			Control::Button(ref c)=>{
+				writeln!(f,"\tpub fn {}_msg(&mut self)->BtnMsg<T> {{",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\t\tself.this.btn_handler({})",c.id).unwrap();
+				writeln!(f,"\t}}").unwrap();
+				//writeln!(f,"\t\t\t{}: Button::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::ListBox(ref c)=>{
+				//writeln!(f,"\t\t\t{}: ListBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::ComboBox(ref c)=>{
+				//writeln!(f,"\t\t\t{}: ComboBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::Edit(ref c)=>{
+				//writeln!(f,"\t\t\t{}: Edit::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::TreeView(ref c)=>{
+				//writeln!(f,"\t\t\t{}: TreeViewEx::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+			}
+			Control::Static(ref c)=>{
+				//only id!=static can be display
+				// let id = ctrl_id_to_name(&c.id[..]);
+				// if id != "static" {
+				// 	writeln!(f,"\tpub {}: Static::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				// }
+			}
+			Control::GroupBox(ref c)=>{
+				//only id!=static can be display
+				// let id = ctrl_id_to_name(&c.id[..]);
+				// if id != "static" {
+				// 	writeln!(f,"\t\t\t{}: GroupBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				// }
+			}
+			Control::UnKnow(..)=>{
+				//writeln!(f,"\t\t\t// {}: UnKnow,",s).unwrap();
+			}
+			_=>{
+				//String::new()
+				//writeln!(f,"// pub {}")
+			}
+		}
 	}
 }
+

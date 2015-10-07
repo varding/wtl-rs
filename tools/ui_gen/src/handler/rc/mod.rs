@@ -8,3 +8,4 @@ mod rc_file;
 mod dialog;
 mod ctrl;
 mod root;
+pub mod util;

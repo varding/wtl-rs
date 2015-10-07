@@ -49,7 +49,7 @@ impl RcFile {
 		//println!("{:?}", new_path);
 		
 		//create dir first
-		fs::create_dir_all(new_path.as_path().parent().unwrap().clone());
+		fs::create_dir_all(new_path.as_path().parent().unwrap().clone()).unwrap();
 
 		let mut new_file = File::create(new_path).unwrap();
 		new_file.write(txt.as_ref()).expect("save utf8 fail");

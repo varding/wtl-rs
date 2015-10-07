@@ -31,7 +31,7 @@ impl ui::DialogHandler for MainDialogHandler {
         r.main_dlg.this_msg().on_close(|_,_|{
             println!("bye main dlg");
             unsafe{user32::PostQuitMessage(0)};
-        }).set_low_priority(100);       // only for test
+        }).set_user_priority(100);       // only for test
 
         r.main_dlg.btn_about_msg().on_click(|_,t|{
             println!("show about dlg");
