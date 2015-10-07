@@ -3,7 +3,8 @@ use std::fs::{File,self};
 use std::io::{Read,Write};
 use std::path::{Path,PathBuf};
 use std::slice;
-//use std::ffi::OsStr;
+use std::collections::HashMap;
+use winapi::WORD;
 
 use regex::Regex;
 
@@ -89,16 +90,13 @@ impl RcFile {
 		ret
 	}
 
-	pub fn parse_header(&self, name: &str) {
-		let buf: Vec<u8>;
-		if let Some(b) = self.read_file(name) {
-			buf = b;
-		}else{
-			return;
-		}
+	pub fn parse_header(&self, name: &str) -> HashMap<String,WORD> {
+		let buf: Vec<u8> = self.read_file(name).expect("resource.h should exist");
 
 		let txt = self.decode(buf);
+		let ret = self.extract_header(&txt);
 		self.save_as_utf8(name, "utf8\\ui.h", &txt);
+		ret
 	}
 
 	fn extract_rc(&self, txt: &String)->RcRoot {
@@ -124,6 +122,20 @@ impl RcFile {
 		r
 	}
 
+	//#define IDC_LST_ALL_DLGS                1001
+	fn extract_header(&self, txt: &String) -> HashMap<String,WORD> {
+		let mut consts: HashMap<String,WORD> = HashMap::new();
+		let re = Regex::new(r"#define\s+(\w+)\s+(\d+)").unwrap();
+		for cap in re.captures_iter(txt) {
+			//println!("pub const {}: WORD = {};", cap.at(1).unwrap_or(""),cap.at(2).unwrap_or(""));
+			let id = cap.at(1).unwrap_or("").to_string();
+			if id.starts_with("_APS_NEXT") {
+				continue;
+			}
+			consts.insert(id, cap.at(2).unwrap_or("0").parse::<WORD>().unwrap());
+		}
+		consts
+	}
 	//comments and strings must be deleted first,especially strings.they may contain key words like:BEGIN,END
 	// fn replace_string(&self,txt: &mut String) {
 

@@ -9,7 +9,11 @@ extern crate shell32;
 extern crate gdi32;
 extern crate opengl32;
 
-//pub use self::misc::*;
+
+pub use atl::*;
+pub use ctrls::*;
+pub use gdi::*;
+pub use misc::*;
 
 pub mod atl;
 pub mod ctrls;

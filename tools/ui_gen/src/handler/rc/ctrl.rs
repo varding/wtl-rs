@@ -216,32 +216,32 @@ impl Control {
 	pub fn write_declaration(&self,f: &mut File){
 		match *self {
 			Control::Button(ref c)=>{
-				writeln!(f,"\tpub {}: Button,",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: CButton,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::ListBox(ref c)=>{
-				writeln!(f,"\tpub {}: ListBox,",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: CListBox,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::ComboBox(ref c)=>{
-				writeln!(f,"\tpub {}: ComboBox,",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: CComboBox,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::Edit(ref c)=>{
-				writeln!(f,"\tpub {}: Edit,",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: CEdit,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::TreeView(ref c)=>{
-				writeln!(f,"\tpub {}: TreeViewEx,",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\tpub {}: CTreeViewCtrlEx,",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::Static(ref c)=>{
 				//only id!=static can be display
 				let id = ctrl_id_to_name(&c.id[..]);
 				if id != "static" {
-					writeln!(f,"\tpub {}: Static,",id).unwrap();
+					writeln!(f,"\tpub {}: CStatic,",id).unwrap();
 				}
 			}
 			Control::GroupBox(ref c)=>{
 				//only id!=static can be display
 				let id = ctrl_id_to_name(&c.id[..]);
 				if id != "static" {
-					writeln!(f,"\tpub {}: GroupBox,",id).unwrap();
+					writeln!(f,"\tpub {}: CGroupBox,",id).unwrap();
 				}
 			}
 			Control::UnKnow(ref s)=>{
@@ -257,32 +257,32 @@ impl Control {
 	pub fn write_new(&self,f: &mut File){
 		match *self {
 			Control::Button(ref c)=>{
-				writeln!(f,"\t\t\t{}: Button::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\t\t\t{}: CButton::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::ListBox(ref c)=>{
-				writeln!(f,"\t\t\t{}: ListBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\t\t\t{}: CListBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::ComboBox(ref c)=>{
-				writeln!(f,"\t\t\t{}: ComboBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\t\t\t{}: CComboBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::Edit(ref c)=>{
-				writeln!(f,"\t\t\t{}: Edit::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\t\t\t{}: CEdit::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::TreeView(ref c)=>{
-				writeln!(f,"\t\t\t{}: TreeViewEx::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				writeln!(f,"\t\t\t{}: CTreeViewCtrlEx::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
 			}
 			Control::Static(ref c)=>{
 				//only id!=static can be display
 				let id = ctrl_id_to_name(&c.id[..]);
 				if id != "static" {
-					writeln!(f,"\t\t\t{}: Static::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+					writeln!(f,"\t\t\t{}: CStatic::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
 				}
 			}
 			Control::GroupBox(ref c)=>{
 				//only id!=static can be display
 				let id = ctrl_id_to_name(&c.id[..]);
 				if id != "static" {
-					writeln!(f,"\t\t\t{}: GroupBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+					writeln!(f,"\t\t\t{}: CGroupBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
 				}
 			}
 			Control::UnKnow(..)=>{

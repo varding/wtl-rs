@@ -23,7 +23,7 @@ impl MainDlgHandler {
             let this = &t.main_dlg.this;
 
             //bind all controls
-		t.main_dlg.dlg_tree.Attach(this.GetDlgItem(1002));
+		t.main_dlg.tree_selected_dlgs.Attach(this.GetDlgItem(1002));
             t.main_dlg.btn_parse.Attach(this.GetDlgItem(1005));
             t.main_dlg.btn_select.Attach(this.GetDlgItem(1003));
             t.main_dlg.btn_unselect.Attach(this.GetDlgItem(1004));

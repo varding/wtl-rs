@@ -6,13 +6,13 @@ use winapi::*;
 use super::consts::*;
 use super::types::*;
 
-pub struct ComboBox {
+pub struct CComboBox {
     cwin: CWindow,
 }
 
-impl ComboBox {
-    pub fn new(&self)->ComboBox{
-        ComboBox{
+impl CComboBox {
+    pub fn new(&self)->CComboBox{
+        CComboBox{
             cwin: CWindow::new(NULL_HWND),
         }
     }
@@ -83,7 +83,7 @@ return \((\w+)\)(.*);
 
 
 
-impl ComboBox{
+impl CComboBox{
 // Constructors
 // 	CComboBoxT(HWND hWnd = NULL) : TBase(hWnd)
 // 	{ }
@@ -407,7 +407,7 @@ impl ComboBox{
 // expose all cwin methods
 
 // currently racer not support macros,so add all functions manually
-impl ComboBox {
+impl CComboBox {
     #[inline(always)]
     pub fn GetHwnd(&self) -> HWND {
         self.cwin.GetHwnd()

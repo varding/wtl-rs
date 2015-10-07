@@ -2,14 +2,14 @@
 
 use winapi::*;
 use wtl::atl::{Dialog,DlgMsg};
-use wtl::ctrls::{Button,BtnMsg};
+use wtl::ctrls::{CButton,BtnMsg};
 
 use super::AboutDialog;
 
 pub struct MainDialog<T> {
     pub this: Dialog<T>,
     pub about_dialog: AboutDialog<T>,
-    btn_about:Button,
+    btn_about:CButton,
 }
 
 impl<T> MainDialog<T> {
@@ -17,7 +17,7 @@ impl<T> MainDialog<T> {
 		MainDialog{
 			this: Dialog::new(129),
 			about_dialog: AboutDialog::new(),
-			btn_about:Button::new(),
+			btn_about:CButton::new(),
 		}
 	}
 

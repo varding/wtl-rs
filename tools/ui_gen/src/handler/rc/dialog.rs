@@ -97,6 +97,10 @@ impl Dialog {
 		//write current file
 		let mut f = File::create(cur_path.clone()).unwrap();
 
+		//write use
+		writeln!(f,"#![allow(dead_code)]").unwrap();;
+		writeln!(f,"use wtl::*;").unwrap();;
+		writeln!(f,"use ui::consts::*;").unwrap();;
 		//struct name should be camel case
 		let camel_name = to_camel_case(name);
 		self.write_declaration(&camel_name[..],&mut f);

@@ -2,10 +2,14 @@ use regex::Regex;
 use super::Dialog;
 use std::path::PathBuf;
 use std::collections::HashMap;
-//use std::fmt;
+use winapi::WORD;
+use std::fs::{self,File};
+use std::io::Write;
+
 #[derive(Debug)]
 pub struct RcRoot {
     pub dlgs: HashMap<String,Box<Dialog>>,
+    consts: HashMap<String,WORD>,
 }
 
 // impl fmt::Display for RcRoot {
@@ -22,7 +26,12 @@ impl RcRoot {
 	pub fn new()->RcRoot{
 		RcRoot{
 			dlgs: HashMap::new(),
+			consts: HashMap::new(),
 		}
+	}
+
+	pub fn set_consts(&mut self,c: HashMap<String,WORD>) {
+		self.consts = c;
 	}
 
 	pub fn parse_dialog(&mut self,id: &str, data: &str){
@@ -76,8 +85,23 @@ impl RcRoot {
 	pub fn write_files(&self){
 		let mut cur_path = PathBuf::from(".\\ui");
 		println!("cur path: {:?}", cur_path);
+
+		self.write_consts(cur_path.clone());
+
 		for (_,d) in &self.dlgs {
 			d.write_file(&mut cur_path);
+		}
+	}
+
+	fn write_consts(&self, mut cur_path: PathBuf) {
+		cur_path.push("consts.rs");
+		//create dir if not exist
+		fs::create_dir_all(cur_path.as_path().parent().unwrap().clone()).expect("create dir fail");
+
+		let mut f = File::create(cur_path.as_path().clone()).unwrap();
+		writeln!(f,"use winapi::WORD;").unwrap();;
+		for (id,value) in &self.consts {
+			writeln!(f,"pub const {}: WORD = {};",id,value).unwrap();
 		}
 	}
 

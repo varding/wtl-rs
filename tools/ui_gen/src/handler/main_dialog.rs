@@ -25,7 +25,8 @@ impl MainDlgHandler {
             println!("hello main dlg");
             t.main_dlg.this.SetWindowText("GUI Generator");
 
-            t.main_dlg.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\del\\mhc.rc");
+            //t.main_dlg.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\del\\mhc.rc");
+            t.main_dlg.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\design\\design.rc");
         });
 
         let rt1 = self.rc_root.clone();
@@ -55,7 +56,7 @@ impl MainDlgHandler {
 struct UnSelectDialog;
 impl UnSelectDialog {
     fn call(t: &mut ui::Root) {
-        let item = t.main_dlg.dlg_tree.GetSelectedItem();
+        let item = t.main_dlg.tree_selected_dlgs.GetSelectedItem();
             let sel_txt = item.GetText();
 
             let del_strings = Self::delete_tree(&item);
@@ -95,19 +96,19 @@ fn parse_msg(t: &mut ui::Root)->RcRoot {
         //delete existing items
     t.main_dlg.lst_all_dlgs.ResetContent();
     //this does not work
-    //t.main_dlg.dlg_tree.DeleteAllItems();
+    //t.main_dlg.tree_selected_dlgs.DeleteAllItems();
 
     //delete orignal root
-    let a = t.main_dlg.dlg_tree.GetRootItem();
+    let a = t.main_dlg.tree_selected_dlgs.GetRootItem();
     a.Delete();
     // add a new root item
-    let a = t.main_dlg.dlg_tree.GetRootItem();
+    let a = t.main_dlg.tree_selected_dlgs.GetRootItem();
     let b = a.AddHead("Root",-1);
     b.Select();
 
     let rf = RcFile;
     let p = t.main_dlg.edt_rc_path.GetWindowText();
-    let rc_root = rf.parse_rc(&p);
+    let mut rc_root = rf.parse_rc(&p);
 
     // show all dialog names
     for (id,_) in &rc_root.dlgs {
@@ -118,7 +119,8 @@ fn parse_msg(t: &mut ui::Root)->RcRoot {
 
     let mut header_path = PathBuf::from(Path::new(&p).parent().unwrap());
     header_path.push("resource.h");
-    rf.parse_header(header_path.to_str().unwrap());
+    let consts = rf.parse_header(header_path.to_str().unwrap());
+    rc_root.set_consts(consts);
 
     rc_root
 }
@@ -139,8 +141,8 @@ impl SelectDialog {
         }
         t.main_dlg.lst_all_dlgs.SetCurSel(lst_sel);
 
-        //let tree_sel_txt = t.main_dlg.dlg_tree.GetSelectedItem().GetText();
-        let item = t.main_dlg.dlg_tree.GetSelectedItem();
+        //let tree_sel_txt = t.main_dlg.tree_selected_dlgs.GetSelectedItem().GetText();
+        let item = t.main_dlg.tree_selected_dlgs.GetSelectedItem();
         item.AddTail(&lst_sel_txt[..],-1);
         //expand the button of a new item manually
         //http://www.go4expert.com/forums/i-refresh-expand-sign-treeview-control-t15764/

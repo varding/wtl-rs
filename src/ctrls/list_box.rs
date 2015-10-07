@@ -52,11 +52,11 @@ return \((\w+)\)(.*);
 \2 as \1
 */
 
-pub struct ListBox {
+pub struct CListBox {
     cwin: CWindow,
 }
 
-impl ListBox {
+impl CListBox {
 // Constructors
 // 	CListBoxT(HWND hWnd = NULL) : TBase(hWnd)
 // 	{ }
@@ -80,8 +80,8 @@ impl ListBox {
 // 		return _T("LISTBOX");
 // 	}
 
-	pub fn new()->ListBox{
-		ListBox{
+	pub fn new()->CListBox{
+		CListBox{
 			cwin: CWindow::new(NULL_HWND),
 		}
 	}
@@ -417,7 +417,7 @@ impl ListBox {
 // expose all cwin methods
 
 // currently racer not support macros,so add all functions manually
-impl ListBox {
+impl CListBox {
     #[inline(always)]
     pub fn GetHwnd(&self) -> HWND {
         self.cwin.GetHwnd()

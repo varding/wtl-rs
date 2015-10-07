@@ -6,13 +6,13 @@ use winapi::*;
 use super::consts::*;
 use super::types::*;
 
-pub struct Edit {
+pub struct CEdit {
     cwin: CWindow,
 }
 
-impl Edit {
-    pub fn new()->Edit{
-        Edit{
+impl CEdit {
+    pub fn new()->CEdit{
+        CEdit{
             cwin: CWindow::new(NULL_HWND),
         }
     }
@@ -102,7 +102,7 @@ LPARAM coercion
 
 */
 
-impl Edit{
+impl CEdit{
 // Constructors
 // 	CEditT(HWND hWnd = NULL) : TBase(hWnd)
 // 	{ }
@@ -505,7 +505,7 @@ impl Edit{
 // expose all cwin methods
 
 // currently racer not support macros,so add all functions manually
-impl Edit {
+impl CEdit {
     #[inline(always)]
     pub fn GetHwnd(&self) -> HWND {
         self.cwin.GetHwnd()

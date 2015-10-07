@@ -48,11 +48,11 @@ pub fn \1\(&self,\3: \2\)
  =>
  \2 as \1
 */
-pub struct Static {
+pub struct CStatic {
     cwin: CWindow,
 }
 
-impl Static {
+impl CStatic {
 	
 // ructors
 // 	CStaticT(HWND hWnd = NULL) : TBase(hWnd)
@@ -139,7 +139,7 @@ impl Static {
 // expose all cwin methods
 
 // currently racer not support macros,so add all functions manually
-impl Static {
+impl CStatic {
     #[inline(always)]
     pub fn GetHwnd(&self) -> HWND {
         self.cwin.GetHwnd()

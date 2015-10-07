@@ -7,13 +7,13 @@ use winapi::*;
 //use user32::*;
 use super::consts::*;
 
-pub struct Button {
+pub struct CButton {
     cwin: CWindow,
 }
 
-impl Button {
-    pub fn new()->Button{
-        Button{
+impl CButton {
+    pub fn new()->CButton{
+        CButton{
             cwin: CWindow::new(NULL_HWND),
         }
     }
@@ -48,7 +48,7 @@ pub fn \1\(&self,\3: \2\)
 =>
 \1 as LPARAM
 */
-impl Button {
+impl CButton {
 	
 	// CButtonT(HWND hWnd = NULL) : TBase(hWnd)
 	// { }
@@ -216,7 +216,7 @@ impl Button {
 // expose all cwin methods
 
 // currently racer not support macros,so add all functions manually
-impl Button {
+impl CButton {
     #[inline(always)]
     pub fn GetHwnd(&self) -> HWND {
         self.cwin.GetHwnd()

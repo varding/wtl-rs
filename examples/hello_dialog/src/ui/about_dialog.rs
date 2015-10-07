@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 //use winapi::*;
 use wtl::atl::{Dialog,DlgMsg};
-use wtl::ctrls::{Button,BtnMsg};
+use wtl::ctrls::{CButton,BtnMsg};
 
 // modal dialog should not auto created
 pub struct AboutDialog<T> {
     pub this: Dialog<T>,
-    btn_ok:Button,
+    btn_ok:CButton,
 }
 
 
@@ -14,7 +14,7 @@ impl<T> AboutDialog<T> {
 	pub fn new()->AboutDialog<T>{
 		AboutDialog{
 			this: Dialog::new(100),
-			btn_ok:Button::new(),
+			btn_ok:CButton::new(),
 		}
 	}
 

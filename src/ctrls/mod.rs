@@ -1,13 +1,13 @@
 
 
-pub use self::static_ctrl::Static;
-pub use self::button::Button;
+pub use self::static_ctrl::CStatic;
+pub use self::button::CButton;
 pub use self::btn_msg::BtnMsg;
 pub use self::static_msg::StcMsg;
-pub use self::list_box::ListBox;
-pub use self::combo_box::ComboBox;
+pub use self::list_box::CListBox;
+pub use self::combo_box::CComboBox;
 pub use self::combo_box_msg::CmbBoxMsg;
-pub use self::edit::Edit;
+pub use self::edit::CEdit;
 pub use self::edit_msg::EdtMsg;
 //pub use self::tree_item::CTreeItem;
 pub use self::tree_view_ctrl::CTreeViewCtrl;
