@@ -1,3 +1,8 @@
+// #![feature(link_args)]
+// #[link_args = "-Wl,--subsystem,windows"]
+// extern {}
+
+
 extern crate regex;
 extern crate wtl;
 extern crate user32;

@@ -14,16 +14,6 @@ pub struct Dialog {
     children: HashMap<String,Box<Dialog>>,
 }
 
-// impl fmt::Display for Dialog {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         let r = write!(f, "{}", self.id);
-//         for (id,_) in &self.children {
-//         	println!("{}", id);
-//         }
-//         r
-//     }
-// }
-
 impl Dialog {
 	pub fn new(id: &str)->Dialog{
 		Dialog{
@@ -78,15 +68,23 @@ impl Dialog {
 		//get name first:use as file name and child dir name
 		//let id = self.id.trim();
 		let name = dlg_id_to_name(&self.id[..]);
-		let name = &name[..];
+		
+		let sub_dir_name = format!("sub_{}",name);
 
+		let name = &name[..];
 		//enter child path
-		cur_path.push(name);
+		cur_path.push(sub_dir_name.clone());
 		
 		//recursive write
 		for (_,c) in &self.children {
 			c.write_file(cur_path);
 		}
+
+		//write mod.rs in child dir for all children
+		if self.children.len() > 0 {
+			self.write_sub_mod_file(cur_path.clone());
+		}
+
 		//leave child path
 		cur_path.pop();
 		
@@ -98,14 +96,28 @@ impl Dialog {
 		let mut f = File::create(cur_path.clone()).unwrap();
 
 		//write use
-		writeln!(f,"#![allow(dead_code)]").unwrap();;
-		writeln!(f,"use wtl::*;").unwrap();;
-		writeln!(f,"use ui::consts::*;").unwrap();;
+		writeln!(f,"#![allow(dead_code)]").unwrap();
+		writeln!(f,"use wtl::*;").unwrap();
+		writeln!(f,"use ui::consts::*;").unwrap();
+		if self.children.len() > 0 {
+			writeln!(f,"use super::{}::*;",sub_dir_name).unwrap();
+		}
 		//struct name should be camel case
 		let camel_name = to_camel_case(name);
 		self.write_declaration(&camel_name[..],&mut f);
 		self.write_impl(&camel_name[..],&mut f);
 		cur_path.pop();			//delete file name
+	}
+
+	fn write_sub_mod_file(&self,mut cur_path: PathBuf) {
+		cur_path.push("mod.rs");
+		let mut f = File::create(cur_path.as_path()).unwrap();
+		for (id,_) in &self.children {
+			let name = dlg_id_to_name(id);
+			let camel_name = to_camel_case(&name[..]);
+			writeln!(f,"mod sub_{};",name).unwrap();
+			writeln!(f,"pub use self::sub_{}::{};",name,camel_name).unwrap();
+		}
 	}
 }
 
@@ -113,16 +125,17 @@ impl Dialog {
 	fn write_declaration(&self,name: &str,f: &mut File) {
 		writeln!(f,"pub struct {}<T> {{", name).unwrap();
 		writeln!(f,"\tpub this: Dialog<T>,").unwrap();
+		
+		//declaration of child dialogs
+		for (id,_) in &self.children {
+			let name = dlg_id_to_name(id);
+			writeln!(f,"\tpub {}: {}<T>,",name,to_camel_case(&name[..])).unwrap();
+		}
+
 		//declaration of ctrls
 		for c in &self.ctrls {
 			//writeln!(f,"\tpub {}",c.write());
 			c.write_declaration(f);
-		}
-
-		//declaration of child dialogs
-		for (id,_) in &self.children {
-			let name = ctrl_id_to_name(id);
-			writeln!(f,"\tpub {}: {}<T>,",name,to_camel_case(&name[..])).unwrap();
 		}
 
 		writeln!(f,"}}").unwrap();
@@ -134,7 +147,7 @@ impl Dialog {
 		self.write_create_dialog(f);
 		self.write_msg(f);
 		writeln!(f,"}}").unwrap();
-	}	
+	}
 }
 
 impl Dialog {
@@ -143,16 +156,16 @@ impl Dialog {
 		writeln!(f,"\t\t{}{{",name).unwrap();
 		writeln!(f,"\t\t\tthis: Dialog::new({}),",self.id).unwrap();
 		
+		//net instance of child dialogs
+		for (id,_) in &self.children {
+			let name = dlg_id_to_name(id);
+			writeln!(f,"\t\t\t{}: {}::new(),",name,to_camel_case(&name[..])).unwrap();
+		}
+
 		//new instance of ctrls
 		for c in &self.ctrls {
 			//writeln!(f,"\tpub {}",c.write());
 			c.write_new(f);
-		}
-
-		//net instance of child dialogs
-		for (id,_) in &self.children {
-			let name = ctrl_id_to_name(id);
-			writeln!(f,"\t\t\t{}: {}::new(),",name,to_camel_case(&name[..])).unwrap();
 		}
 
 		writeln!(f,"\t\t}}").unwrap();
@@ -180,5 +193,5 @@ impl Dialog {
 		for c in &self.ctrls {
 			c.write_msg(f);
 		}
-	}	
+	}
 }

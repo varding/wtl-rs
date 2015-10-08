@@ -1,10 +1,10 @@
 
-
 pub use self::message_loop::MessageLoop;
-pub use self::main_dialog::MainDialog;
 pub use self::root::Root;
+pub use self::consts::*;
 
 mod message_loop;
-mod main_dialog;
 mod root;
+mod sub_root;
 pub mod consts;
+
