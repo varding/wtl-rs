@@ -3,7 +3,7 @@ use std::fs::{File,self};
 use std::io::{Read,Write};
 use std::path::{Path,PathBuf};
 use std::slice;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use winapi::WORD;
 
 use regex::Regex;
@@ -90,7 +90,7 @@ impl RcFile {
 		ret
 	}
 
-	pub fn parse_header(&self, name: &str) -> HashMap<String,WORD> {
+	pub fn parse_header(&self, name: &str) -> BTreeMap<String,WORD> {
 		let buf: Vec<u8> = self.read_file(name).expect("resource.h should exist");
 
 		let txt = self.decode(buf);
@@ -123,8 +123,8 @@ impl RcFile {
 	}
 
 	//#define IDC_LST_ALL_DLGS                1001
-	fn extract_header(&self, txt: &String) -> HashMap<String,WORD> {
-		let mut consts: HashMap<String,WORD> = HashMap::new();
+	fn extract_header(&self, txt: &String) -> BTreeMap<String,WORD> {
+		let mut consts: BTreeMap<String,WORD> = BTreeMap::new();
 		let re = Regex::new(r"#define\s+(\w+)\s+(\d+)").unwrap();
 		for cap in re.captures_iter(txt) {
 			//println!("pub const {}: WORD = {};", cap.at(1).unwrap_or(""),cap.at(2).unwrap_or(""));

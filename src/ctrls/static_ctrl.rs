@@ -53,7 +53,11 @@ pub struct CStatic {
 }
 
 impl CStatic {
-	
+	pub fn new()->CStatic {
+        CStatic{
+            cwin: CWindow::new(0 as HWND),
+        }
+    }
 // ructors
 // 	CStaticT(HWND hWnd = NULL) : TBase(hWnd)
 // 	{ }

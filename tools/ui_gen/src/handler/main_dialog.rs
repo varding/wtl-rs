@@ -25,8 +25,8 @@ impl MainDlgHandler {
             println!("hello main dlg");
             t.main_dialog.this.SetWindowText("GUI Generator");
 
-            t.main_dialog.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\del\\mhc.rc");
-            //t.main_dialog.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\design\\design.rc");
+            //t.main_dialog.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\del\\mhc.rc");
+            t.main_dialog.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\design\\design.rc");
         });
 
         let rt1 = self.rc_root.clone();

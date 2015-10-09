@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use super::Control;
 use std::fs::{self,File};
 use std::io::Write;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use super::util::*;
 //use std::fmt;
 
@@ -11,7 +11,7 @@ use super::util::*;
 pub struct Dialog {
 	id: String,
     ctrls: Vec<Control>,
-    children: HashMap<String,Box<Dialog>>,
+    children: BTreeMap<String,Box<Dialog>>,
 }
 
 impl Dialog {
@@ -19,7 +19,7 @@ impl Dialog {
 		Dialog{
 			id: id.trim().to_string(),
 			ctrls: Vec::new(),
-			children: HashMap::new(),
+			children: BTreeMap::new(),
 		}
 	}
 
@@ -64,38 +64,42 @@ impl Dialog {
 }
 
 impl Dialog {
-	pub fn write_file(&self,cur_path: &mut PathBuf) {
+	pub fn write_file(&self,mod_file: &mut File,cur_path: &mut PathBuf) {
 		//get name first:use as file name and child dir name
-		//let id = self.id.trim();
 		let name = dlg_id_to_name(&self.id[..]);
-		
 		let sub_dir_name = format!("sub_{}",name);
-
 		let name = &name[..];
-		//enter child path
-		cur_path.push(sub_dir_name.clone());
 		
-		//recursive write
-		for (_,c) in &self.children {
-			c.write_file(cur_path);
-		}
-
-		//write mod.rs in child dir for all children
+		
 		if self.children.len() > 0 {
-			self.write_sub_mod_file(cur_path.clone());
-		}
+			//enter child path
+			cur_path.push(sub_dir_name.clone());
 
-		//leave child path
-		cur_path.pop();
+			//create child dir first
+			fs::create_dir_all(cur_path.as_path().clone()).expect("create dir fail");
+			// create mod.rs for child directory,they append mod and it's sub mod to this file
+			let mut child_mod_path = cur_path.clone();
+			child_mod_path.push("mod.rs");
+			let mut child_mod_file = File::create(child_mod_path.as_path()).unwrap();
+
+			//recursive write
+			for (_,c) in &self.children {
+				c.write_file(&mut child_mod_file,cur_path);
+			}
+
+			//leave child path
+			cur_path.pop();
+		}
 		
+		//append mod of this Dialog and it's child dialogs  to the end of the mod.rs in current directory
+		self.append_mod_file(mod_file);
+		//write this Dialog
 		cur_path.push(format!("{}.rs",name));
 		//create dir if not exist
 		fs::create_dir_all(cur_path.as_path().parent().unwrap().clone()).expect("create dir fail");
-
 		//write current file
 		let mut f = File::create(cur_path.clone()).unwrap();
-
-		//write use
+		//write use statements
 		writeln!(f,"#![allow(dead_code)]").unwrap();
 		writeln!(f,"use wtl::*;").unwrap();
 		writeln!(f,"use ui::consts::*;").unwrap();
@@ -109,14 +113,19 @@ impl Dialog {
 		cur_path.pop();			//delete file name
 	}
 
-	fn write_sub_mod_file(&self,mut cur_path: PathBuf) {
-		cur_path.push("mod.rs");
-		let mut f = File::create(cur_path.as_path()).unwrap();
-		for (id,_) in &self.children {
-			let name = dlg_id_to_name(id);
-			let camel_name = to_camel_case(&name[..]);
-			writeln!(f,"mod sub_{};",name).unwrap();
-			writeln!(f,"pub use self::sub_{}::{};",name,camel_name).unwrap();
+	/*
+	write mod sub_xxx in the end of mod.rs in current directory
+	write this mod at the end of the mod file
+	*/
+	//write child dialogs in the mod.rs of sub
+	fn append_mod_file(&self,f: &mut File) {
+		let mod_name = dlg_id_to_name(&self.id[..]);
+		writeln!(f,"mod {};",mod_name).unwrap();
+		writeln!(f,"pub use self::{}::*;",mod_name).unwrap();
+
+		if self.children.len() > 0 {
+			writeln!(f,"mod sub_{};",mod_name).unwrap();
+			writeln!(f,"pub use self::sub_{}::*;",mod_name).unwrap();
 		}
 	}
 }

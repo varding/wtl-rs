@@ -11,7 +11,7 @@ pub struct CComboBox {
 }
 
 impl CComboBox {
-    pub fn new(&self)->CComboBox{
+    pub fn new()->CComboBox{
         CComboBox{
             cwin: CWindow::new(NULL_HWND),
         }

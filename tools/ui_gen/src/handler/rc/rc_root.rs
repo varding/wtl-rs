@@ -1,7 +1,7 @@
 use regex::Regex;
 use super::Dialog;
 use std::path::PathBuf;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use winapi::WORD;
 use std::fs::{self,File};
 use std::io::Write;
@@ -9,19 +9,19 @@ use super::util::*;
 
 #[derive(Debug)]
 pub struct RcRoot {
-    pub dlgs: HashMap<String,Box<Dialog>>,
-    consts: HashMap<String,WORD>,
+    pub dlgs: BTreeMap<String,Box<Dialog>>,
+    consts: BTreeMap<String,WORD>,
 }
 
 impl RcRoot {
 	pub fn new()->RcRoot{
 		RcRoot{
-			dlgs: HashMap::new(),
-			consts: HashMap::new(),
+			dlgs: BTreeMap::new(),
+			consts: BTreeMap::new(),
 		}
 	}
 
-	pub fn set_consts(&mut self,c: HashMap<String,WORD>) {
+	pub fn set_consts(&mut self,c: BTreeMap<String,WORD>) {
 		self.consts = c;
 	}
 
@@ -87,10 +87,13 @@ impl RcRoot {
 		//all children of root save in the ui/root dir
 		cur_path.push("sub_root");
 		fs::create_dir_all(cur_path.as_path().clone()).expect("create dir fail");
-		self.write_sub_mod_file(cur_path.clone());
 
+		//child mod.rs
+		let mut child_mod_path = cur_path.clone();
+		child_mod_path.push("mod.rs");
+		let mut child_mod_file = File::create(child_mod_path.as_path()).unwrap();
 		for (_,d) in &self.dlgs {
-			d.write_file(&mut cur_path);
+			d.write_file(&mut child_mod_file,&mut cur_path);
 		}
 	}
 
@@ -112,16 +115,16 @@ impl RcRoot {
 		writeln!(f,"{}",ROOT_MOD_FILE).unwrap();
 	}
 
-	pub fn write_sub_mod_file(&self, mut cur_path: PathBuf) {
-		cur_path.push("mod.rs");
-		let mut f = File::create(cur_path.as_path()).unwrap();
-		for (id,_) in &self.dlgs {
-			let name = dlg_id_to_name(id);
-			let camel_name = to_camel_case(&name[..]);
-			writeln!(f,"mod {};",name).unwrap();
-			writeln!(f,"pub use self::{}::{};",name,camel_name).unwrap();
-		}
-	}
+	// pub fn write_sub_mod_file(&self, mut cur_path: PathBuf) {
+	// 	cur_path.push("mod.rs");
+	// 	let mut f = File::create(cur_path.as_path()).unwrap();
+	// 	for (id,_) in &self.dlgs {
+	// 		let name = dlg_id_to_name(id);
+	// 		let camel_name = to_camel_case(&name[..]);
+	// 		writeln!(f,"mod {};",name).unwrap();
+	// 		writeln!(f,"pub use self::{}::{};",name,camel_name).unwrap();
+	// 	}
+	// }
 
 	pub fn write_message_loop_file(&self, mut cur_path: PathBuf) {
 		//const s: &'static str = "use winapi::*;\r\nuse user32::*;\r\n\r\npub struct MessageLoop;\r\n\r\nimpl MessageLoop {\r\n\tpub fn run(){\r\n\t\tlet mut msg = MSG{hwnd:0 as HWND,message:0,wParam:0,lParam:0,time:0,pt:POINT{x:0,y:0}};\r\n\t\tunsafe{\r\n\t\t\twhile GetMessageW( &mut msg, 0 as HWND, 0, 0 ) > 0 {\r\n\t\t\t\tTranslateMessage(&msg);\r\n\t\t\t\tDispatchMessageW(&msg);\r\n\t\t\t}\r\n\t\t}\r\n\t}\r\n}";
