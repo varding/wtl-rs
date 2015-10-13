@@ -20,6 +20,9 @@ impl MainDlgHandler {
     }
 
 	pub fn register_handler(&self, r: &mut ui::Root) {
+        r.main_dialog.this_msg().on_close(|_,_|{
+            unsafe{user32::PostQuitMessage(0)};
+        });
 
 		r.main_dialog.this_msg().on_init_dialog(|_,t|{
             println!("hello main dlg");
@@ -46,7 +49,7 @@ impl MainDlgHandler {
 
         let rt4 = self.rc_root.clone();
         r.main_dialog.btn_generate_msg().on_click(move|_,t|{
-            let rt = rt4.borrow_mut();
+            let mut rt = rt4.borrow_mut();
             rt.write_files();
         });
 	}

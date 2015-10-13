@@ -338,5 +338,58 @@ impl Control {
 			}
 		}
 	}
+
+	/// dialog path in the tree
+	pub fn write_binding(&self,path: &String,f: &mut File){
+		match *self {
+			Control::Button(ref c)=>{
+				let id = ctrl_id_to_name(&c.id[..]);
+				writeln!(f,"\t\tt.{}.{}.Attach(this.GetDlgItem({}));",path,id,c.id).unwrap();
+			}
+			Control::ListBox(ref c)=>{
+				//writeln!(f,"\t\t\t{}: CListBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				let id = ctrl_id_to_name(&c.id[..]);
+				writeln!(f,"\t\tt.{}.{}.Attach(this.GetDlgItem({}));",path,id,c.id).unwrap();
+			}
+			Control::ComboBox(ref c)=>{
+				//writeln!(f,"\t\t\t{}: CComboBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				let id = ctrl_id_to_name(&c.id[..]);
+				writeln!(f,"\t\tt.{}.{}.Attach(this.GetDlgItem({}));",path,id,c.id).unwrap();
+			}
+			Control::Edit(ref c)=>{
+				//writeln!(f,"\t\t\t{}: CEdit::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				let id = ctrl_id_to_name(&c.id[..]);
+				writeln!(f,"\t\tt.{}.{}.Attach(this.GetDlgItem({}));",path,id,c.id).unwrap();
+			}
+			Control::TreeView(ref c)=>{
+				//writeln!(f,"\t\t\t{}: CTreeViewCtrlEx::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+				let id = ctrl_id_to_name(&c.id[..]);
+				writeln!(f,"\t\tt.{}.{}.Attach(this.GetDlgItem({}));",path,id,c.id).unwrap();
+			}
+			Control::Static(ref c)=>{
+				//only id!=static can be display
+				let id = ctrl_id_to_name(&c.id[..]);
+				if id != "static" {
+					//writeln!(f,"\t\t\t{}: CStatic::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+					writeln!(f,"\t\tt.{}.{}.Attach(this.GetDlgItem({}));",path,id,c.id).unwrap();
+				}
+			}
+			Control::GroupBox(ref c)=>{
+				//only id!=static can be display
+				let id = ctrl_id_to_name(&c.id[..]);
+				if id != "static" {
+					//writeln!(f,"\t\t\t{}: CGroupBox::new(),",ctrl_id_to_name(&c.id[..])).unwrap();
+					writeln!(f,"\t\tt.{}.{}.Attach(this.GetDlgItem({}));",path,id,c.id).unwrap();
+				}
+			}
+			Control::UnKnow(..)=>{
+				//writeln!(f,"\t\t\t// {}: UnKnow,",s).unwrap();
+			}
+			_=>{
+				//String::new()
+				//writeln!(f,"// pub {}")
+			}
+		}
+	}
 }
 

@@ -80,9 +80,9 @@ impl CWindow {
         unsafe{user32::SetParent(self.0, hWndNewParent)}
     }
 
-    pub fn GetDlgItem(&self,nID:c_int) -> HWND {
+    pub fn GetDlgItem(&self,nID:WORD) -> HWND {
         self.assert_window();
-        unsafe{user32::GetDlgItem(self.0, nID)}
+        unsafe{user32::GetDlgItem(self.0, nID as c_int)}
     }
 
 	//add rewritted functions of above that use cwindow as output,sometimes very convenient
@@ -100,10 +100,10 @@ impl CWindow {
             })
     }
 
-    pub fn GetDlgItem2(&self, nID: c_int) -> CWindow {
+    pub fn GetDlgItem2(&self, nID: WORD) -> CWindow {
         self.assert_window();
         CWindow::new(unsafe {
-                user32::GetDlgItem(self.0, nID)
+                user32::GetDlgItem(self.0, nID as c_int)
             })
     }
 
@@ -914,7 +914,7 @@ impl CWindow {
     }
 
 	//pub fn GetDlgItemText (&self,nID:c_int,lpStr:LPTSTR,nMaxCount:c_int) -> UINT {
-    pub fn GetDlgItemText (&self, nID: c_int) -> String {
+    pub fn GetDlgItemText (&self, nID: WORD) -> String {
 		self.assert_window();
         let hItem = self.GetDlgItem(nID);
         if hItem != NULL_HWND {

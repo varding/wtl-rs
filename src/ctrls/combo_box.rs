@@ -439,7 +439,7 @@ impl CComboBox {
     }
 
     #[inline(always)]
-    pub fn GetDlgItem2 (&self,nID:c_int) -> CWindow {
+    pub fn GetDlgItem2 (&self,nID:WORD) -> CWindow {
         self.cwin.GetDlgItem2(nID)
     }
 

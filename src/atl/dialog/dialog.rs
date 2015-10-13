@@ -401,7 +401,7 @@ impl<T> Dialog<T> {
                     match LOWORD(wParam as DWORD) as DWORD {
                         WM_CREATE | WM_DESTROY => hWndChild = lParam as HWND,
                         _ => hWndChild =
-                                 self.cwin.GetDlgItem2(HIWORD(wParam as DWORD) as c_int).GetHwnd(),
+                                 self.cwin.GetDlgItem2(HIWORD(wParam as DWORD) as WORD).GetHwnd(),
                     }
                 }
                 WM_DRAWITEM => {
@@ -412,7 +412,7 @@ impl<T> Dialog<T> {
                 WM_MEASUREITEM => {
                     if wParam != 0 {
                         let id = (*(lParam as LPMEASUREITEMSTRUCT)).CtlID;
-                        hWndChild = self.cwin.GetDlgItem2(id as c_int).GetHwnd();
+                        hWndChild = self.cwin.GetDlgItem2(id as WORD).GetHwnd();
                     }
                 }
                 WM_COMPAREITEM => {
@@ -656,7 +656,7 @@ impl<T> Dialog<T> {
     }
 
     #[inline(always)]
-    pub fn GetDlgItem(&self,nID:c_int) -> HWND {
+    pub fn GetDlgItem(&self,nID:WORD) -> HWND {
         self.cwin.GetDlgItem(nID)
     }
     
@@ -671,7 +671,7 @@ impl<T> Dialog<T> {
     }
 
     #[inline(always)]
-    pub fn GetDlgItem2 (&self,nID:c_int) -> CWindow {
+    pub fn GetDlgItem2 (&self,nID:WORD) -> CWindow {
         self.cwin.GetDlgItem2(nID)
     }
 

@@ -1,34 +1,18 @@
-
 use ui::Root;
 use user32;
 use winapi::*;
-use comctl32;
-
-pub struct MainDlgHandler;
-
-impl MainDlgHandler {
-	pub fn register_handler(&self, r: &mut Root) {
-		r.main_dialog.this_msg().on_close(|_,_|{
-			unsafe{user32::PostQuitMessage(0)};
-		});
-
-		r.main_dialog.this_msg().on_init_dialog(|_,t|{
-            //println!("hello main dlg");
-            unsafe{
-                  comctl32::InitCommonControls();
-            }
-            t.main_dialog.this.CenterWindow(0 as HWND);
-            //t.main_dialog.this.SetWindowText("GUI Generator");
-
-            let this = &t.main_dialog.this;
-
-            //bind all controls
-		t.main_dialog.tree_selected_dlgs.Attach(this.GetDlgItem(1002));
-            t.main_dialog.btn_parse.Attach(this.GetDlgItem(1005));
-            t.main_dialog.btn_select.Attach(this.GetDlgItem(1003));
-            t.main_dialog.btn_unselect.Attach(this.GetDlgItem(1004));
-            t.main_dialog.edt_rc_path.Attach(t.main_dialog.this.GetDlgItem(1006));
-            t.main_dialog.lst_all_dlgs.Attach(t.main_dialog.this.GetDlgItem(1001));
-        }).set_system_priority(0);
-	}
+use ui::consts::*;
+pub fn register_handler(r: &mut Root) {
+	r.main_dialog.this_msg().on_init_dialog(|_,t|{
+		t.main_dialog.this.CenterWindow(0 as HWND);
+		let this = &t.main_dialog.this;
+		t.main_dialog.lst_all_dlgs.Attach(this.GetDlgItem(IDC_LST_ALL_DLGS));
+		t.main_dialog.tree_selected_dlgs.Attach(this.GetDlgItem(IDC_TREE_SELECTED_DLGS));
+		t.main_dialog.btn_select.Attach(this.GetDlgItem(IDC_BTN_SELECT));
+		t.main_dialog.btn_unselect.Attach(this.GetDlgItem(IDC_BTN_UNSELECT));
+		t.main_dialog.btn_parse.Attach(this.GetDlgItem(IDC_BTN_PARSE));
+		t.main_dialog.edt_rc_path.Attach(this.GetDlgItem(IDC_EDT_RC_PATH));
+		t.main_dialog.btn_generate.Attach(this.GetDlgItem(IDC_BTN_GENERATE));
+		t.main_dialog.edt_dlg_name.Attach(this.GetDlgItem(IDC_EDT_DLG_NAME));
+	}).set_system_priority(0);
 }

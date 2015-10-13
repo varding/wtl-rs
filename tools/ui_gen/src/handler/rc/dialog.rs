@@ -12,6 +12,7 @@ pub struct Dialog {
 	id: String,
     ctrls: Vec<Control>,
     children: BTreeMap<String,Box<Dialog>>,
+    path: String,	//path in handler,like:t.main_dialog.about_dlg
 }
 
 impl Dialog {
@@ -20,18 +21,17 @@ impl Dialog {
 			id: id.trim().to_string(),
 			ctrls: Vec::new(),
 			children: BTreeMap::new(),
+			path: String::new(),
 		}
 	}
 
-	fn add_ctrl(&mut self,c: Control){
-		self.ctrls.push(c);
-	}
-
+	/// called in construction stage, add child of the tree path
 	pub fn add_child(&mut self,id: &str, d: Box<Dialog>){
 		println!("add child,parent:{},child:{}", self.id,d.id);
 		self.children.insert(id.to_string(), d);
 	}
 
+	/// parse every line in begin ... end as a control
 	pub fn parser_ctrls(&mut self,data: &str){
 		let ctrls = data.trim();
 		let lines: Vec<&str> = ctrls.lines().collect();
@@ -43,6 +43,7 @@ impl Dialog {
 		//println!("dialog: {}\n{:?}",self.id, self.ctrls);
 	}
 
+	/// construct a tree structure as the given path
 	pub fn make_path(&mut self, p: &mut Vec<String>) -> Option<&mut Self> {
 		if let Some(last) = p.pop() {
 			let d = self.children.get_mut(&last[..]).expect("dlg should exist");
@@ -52,6 +53,15 @@ impl Dialog {
 		}
 	}
 
+	/// make_path of dialog in leave can't be called,so use this function to set path of all dialog
+	pub fn set_path(&mut self,p: &Vec<String>) {
+		let jp = p.join(".");
+		self.path.push_str(&jp[..]);
+		self.path.push_str(&dlg_id_to_name(&self.id[..]));
+		println!("path vec:{:?},path:{}", p,self.path);
+	}
+
+	/// recusive print 
 	pub fn print(&self,depth: i32) {
 		for i in (0..depth) {
 			print!("    ");
@@ -60,6 +70,11 @@ impl Dialog {
 		for (_,c) in &self.children {
 			c.print(depth+1);
 		}
+	}
+
+	/// simply add a parsed control
+	fn add_ctrl(&mut self,c: Control){
+		self.ctrls.push(c);
 	}
 }
 
@@ -127,6 +142,46 @@ impl Dialog {
 			writeln!(f,"mod sub_{};",mod_name).unwrap();
 			writeln!(f,"pub use self::sub_{}::*;",mod_name).unwrap();
 		}
+	}
+
+	/// write default handler that binds all controls
+	pub fn write_binding_file(&self,mut system_binding_path: &mut PathBuf,dlg_names: &mut Vec<String>) {
+
+		// recursive write,all binding files in the same directory
+		for (_,c) in &self.children {
+				c.write_binding_file(system_binding_path,dlg_names);
+		}
+
+		// no ctrls,return
+		if self.ctrls.len() == 0{
+			return;
+		}
+
+		let name  = dlg_id_to_name(&self.id[..]);
+		system_binding_path.push(format!("{}.rs",name));
+		let mut f = File::create(system_binding_path.as_path().clone()).unwrap();
+		system_binding_path.pop();
+
+		writeln!(f,"use ui::Root;").unwrap();
+		writeln!(f,"use user32;").unwrap();
+		writeln!(f,"use winapi::*;").unwrap();
+		writeln!(f,"use ui::consts::*;").unwrap();
+		//only root dialog write this
+		//writeln!(f,"\t\tr.main_dialog.this_msg().on_close(|_,_|{\r\n\t\t\tunsafe{user32::PostQuitMessage(0)};\r\n\t\t});").unwrap();
+		
+		writeln!(f,"pub fn register_handler(r: &mut Root) {{").unwrap();
+		writeln!(f,"\tr.{}.this_msg().on_init_dialog(|_,t|{{",self.path).unwrap();
+		writeln!(f,"\t\tt.{}.this.CenterWindow(0 as HWND);",self.path).unwrap();
+		writeln!(f,"\t\tlet this = &t.main_dialog.this;").unwrap();
+		for c in &self.ctrls {
+			c.write_binding(&self.path,&mut f);
+		}
+
+		writeln!(f,"\t}}).set_system_priority(0);").unwrap();
+		writeln!(f,"}}").unwrap();
+
+		dlg_names.push(name.to_string());
+		//self.append_binding_mod_file(binding_mod_file);
 	}
 }
 
