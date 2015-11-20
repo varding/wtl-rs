@@ -4,6 +4,7 @@ use winapi::*;
 use user32;
 use shell32;
 use misc::ToCU16Str;
+use std::mem;
 
 pub const NULL_HWND  : HWND  = 0 as HWND;
 pub const NULL_LPARAM:LPARAM = 0 as LPARAM;
@@ -1374,11 +1375,10 @@ impl CWindow {
                 }
             }
 
-
-            let mut rcDlg: RECT = Default::default();
+            let mut rcDlg: RECT = unsafe{mem::zeroed()};//Default::default();
             user32::GetWindowRect(self.0, &mut rcDlg);
-            let mut rcArea: RECT = Default::default();
-            let mut rcCenter: RECT = Default::default();
+            let mut rcArea: RECT = unsafe{mem::zeroed()};//Default::default();
+            let mut rcCenter: RECT = unsafe{mem::zeroed()};//Default::default();
             let hWndParent: HWND;
             if dwStyle & WS_CHILD == 0 {
 
@@ -1397,7 +1397,7 @@ impl CWindow {
                     hMonitor = user32::MonitorFromWindow(self.0, MONITOR_DEFAULTTONEAREST);
                 }
 				//ATLENSURE_RETURN_VAL(hMonitor != NULL, FALSE);
-                let mut minfo: MONITORINFO = Default::default();
+                let mut minfo: MONITORINFO = unsafe{mem::zeroed()};//Default::default();
                 minfo.cbSize = std::mem::size_of::<MONITORINFO>() as DWORD;
                 //let bResult: BOOL = user32::GetMonitorInfoW(hMonitor, &mut minfo);
                 user32::GetMonitorInfoW(hMonitor, &mut minfo);
