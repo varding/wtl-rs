@@ -58,17 +58,21 @@ impl RcFile {
 
 	fn read_file(&self, name: &str) -> Option<Vec<u8>> {
 		let p = Path::new(name);
-		if let Ok(mut f) = File::open(p) {
-			let mut buf: Vec<u8> = Vec::new();
-			f.read_to_end(&mut buf).unwrap();
-			if buf.len() < 2 {
-				println!("invalid rc file");
-				None
-			}else{
-				Some(buf)
-			}
-		}else{
-			None
+		match File::open(p) {
+		    Ok(mut f) => {
+		    	let mut buf: Vec<u8> = Vec::new();
+				f.read_to_end(&mut buf).unwrap();
+				if buf.len() < 2 {
+					println!("invalid rc file");
+					None
+				}else{
+					Some(buf)
+				}
+		    },
+		    Err(e) => {
+		    	println!("open file err:{:?}",e);
+		    	None
+		    },
 		}
 	}
 

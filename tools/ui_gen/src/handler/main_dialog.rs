@@ -121,6 +121,7 @@ fn parse_msg(t: &mut ui::Root)->RcRoot {
     
     //*rt1.borrow_mut() = rc_root;
 
+    //assume resource.h in the same directory of .rc file
     let mut header_path = PathBuf::from(Path::new(&p).parent().unwrap());
     header_path.push("resource.h");
     let consts = rf.parse_header(header_path.to_str().unwrap());
