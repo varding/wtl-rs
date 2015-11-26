@@ -11,12 +11,7 @@ extern crate opengl32;
 
 
 pub use atl::*;
-pub use ctrls::*;
-pub use gdi::*;
-pub use misc::*;
+pub use wtl::*;
 
 pub mod atl;
-pub mod ctrls;
-pub mod gdi;
-pub mod misc;
-
+pub mod wtl;

@@ -26,10 +26,10 @@ impl MainDlgHandler {
 
 		r.main_dialog.this_msg().on_init_dialog(|_,t|{
             println!("hello main dlg");
-            t.main_dialog.this.SetWindowText("GUI Generator");
+            t.main_dialog.this.cwin().SetWindowText("GUI Generator");
 
             //t.main_dialog.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\del\\mhc.rc");
-            t.main_dialog.edt_rc_path.SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\design\\design.rc");
+            t.main_dialog.edt_rc_path.cwin().SetWindowText("K:\\software\\pc\\rust\\wtl-rs\\tools\\ui_gen\\src\\design\\design.rc");
         });
 
         let rt1 = self.rc_root.clone();
@@ -56,6 +56,7 @@ impl MainDlgHandler {
 }
 
 ////////////////////////////////////////////
+// use struct here intead of mod to avoid import all mod used here
 struct UnSelectDialog;
 impl UnSelectDialog {
     fn call(t: &mut ui::Root) {
@@ -110,7 +111,7 @@ fn parse_msg(t: &mut ui::Root)->RcRoot {
     b.Select();
 
     let rf = RcFile;
-    let p = t.main_dialog.edt_rc_path.GetWindowText();
+    let p = t.main_dialog.edt_rc_path.cwin().GetWindowText();
     let mut rc_root = rf.parse_rc(&p);
 
     // show all dialog names

@@ -28,6 +28,9 @@ fn main() {
     //create dialogs that managered by ui_gen tool
     root.create();
 
+    // unsafe{
+    //     *(0 as *mut i32) = 100;
+    // }
     //run message loop
     MessageLoop::run();
 }

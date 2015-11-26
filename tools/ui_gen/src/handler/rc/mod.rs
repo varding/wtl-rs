@@ -1,11 +1,9 @@
 
 pub use self::rc_file::RcFile;
-pub use self::dialog::Dialog;
-pub use self::ctrl::Control;
-pub use self::rc_root::RcRoot;
+pub use self::container::{RcRoot};
 
 mod rc_file;
-mod dialog;
-mod ctrl;
-mod rc_root;
+//mod dialog;
+mod container;
+//mod rc_root;
 pub mod util;

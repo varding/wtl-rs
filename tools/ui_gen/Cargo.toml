@@ -9,11 +9,12 @@ name = "ui_gen"
 path = "src/main.rs"
 
 [dependencies]
-winapi       = {version = "*",path = "../../pkg/winapi"}
-user32-sys   = {version = "*",path = "../../pkg/winapi/lib/user32-sys"}
-kernel32-sys = {version = "*",path = "../../pkg/winapi/lib/kernel32-sys"}
-shell32-sys  = {version = "*",path = "../../pkg/winapi/lib/shell32-sys"}
-comctl32-sys  = {version = "*",path = "../../pkg/winapi/lib/comctl32-sys"}
+winapi   = {version = "*",path = "../../pkg/winapi"}
+user32-sys   = {version = "*",path = "../../pkg/winapi/lib/user32"}
+kernel32-sys = {version = "*",path = "../../pkg/winapi/lib/kernel32"}
+shell32-sys  = {version = "*",path = "../../pkg/winapi/lib/shell32"}
+comctl32-sys = {version = "*",path = "../../pkg/winapi/lib/comctl32"}
+#wtl-rs       = "*"
 wtl-rs       = {version = "*",path = "../../"}
 
 regex = "*"
