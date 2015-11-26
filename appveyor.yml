@@ -17,7 +17,7 @@ install:
         7z x -oC:\ mingw-w64.7z | Out-Null;
         $Env:MINGW = "C:\mingw64"
       }
- - cmd: SET PATH=%MINGW%\bin;C:\Rust\bin;%PATH%
+  - cmd: SET PATH=%MINGW%\bin;C:\Rust\bin;%PATH%
   - rustc -vV
   - cargo -vV
   - git submodule update --init --recursive
