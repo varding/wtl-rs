@@ -1,23 +1,22 @@
-platform:
-  - x86
-  - x64
 environment:
   matrix:
   - TARGET: x86_64-pc-windows-gnu
   - TARGET: i686-pc-windows-gnu
 install:
   - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-nightly-${env:TARGET}.exe" -FileName rust.exe
-  - cmd: rust.exe /VERYSILENT /NORESTART /COMPONENTS="rust,cargo" /DIR=C:\Rust
+  - cmd: rust.exe /VERYSILENT /NORESTART /DIR="C:\Rust"
+  - ps: $wmi = Get-WmiObject win32_processor
   - ps: >-
-      if ($Env:PLATFORM -eq "x86") {
-        $Env:MINGW = "C:\mingw"
+      if ($wmi.Architecture -eq 0) {
+        $Env:MINGW = "C:\mingw";
       }
-      else {
+      elseif ($wmi.Architecture -eq 9){
         Start-FileDownload "http://libgd.blob.core.windows.net/mingw/mingw-w64-dgn-x86_64-20141001.7z" -FileName mingw-w64.7z;
-        7z x -oC:\ mingw-w64.7z | Out-Null;
+        7z x -o C:\mingw-w64.7z | Out-Null;
         $Env:MINGW = "C:\mingw64"
       }
   - cmd: SET PATH=%MINGW%\bin;C:\Rust\bin;%PATH%
+  - ps: $wmi.Architecture
   - rustc -vV
   - cargo -vV
   - git submodule update --init --recursive
