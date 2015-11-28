@@ -4,6 +4,7 @@ use winapi::*;
 //use user32;
 use std::mem;
 use misc::ToCU16Str;
+use std::ops::{Deref,DerefMut};
 
 pub struct CTreeViewCtrl {
     inner: CWindow,
@@ -33,6 +34,22 @@ pub struct CTreeViewCtrl {
 // 	pub fn GetWndClassName(&self,)->static LPCTSTR {
 // 		return WC_TREEVIEW;
 // 	}
+
+impl Deref for CTreeViewCtrl {
+    type Target = CWindow;
+    fn deref<'a>(&'a self)->&'a CWindow {
+        &self.inner
+    }
+}
+
+//impl this for Attach and Detach
+impl DerefMut for CTreeViewCtrl {
+    //type Target = CWindow;
+    fn deref_mut<'a>(&'a mut self)->&'a mut CWindow{
+        &mut self.inner
+    }
+}
+
 impl CTreeViewCtrl {
 	#[inline(always)]
     pub fn cwin(&self)->&CWindow {
@@ -42,13 +59,13 @@ impl CTreeViewCtrl {
 	// pub fn cwin_mut(&mut self)->&mut CWindow {
 	// 	&mut self.inner
 	// }
-    pub fn Attach(&mut self,h: HWND) {
-        self.inner.Attach(h)
-    }
+    // pub fn Attach(&mut self,h: HWND) {
+    //     self.inner.Attach(h)
+    // }
     
-    pub fn Detach(&mut self)->HWND {
-        self.inner.Detach()
-    }
+    // pub fn Detach(&mut self)->HWND {
+    //     self.inner.Detach()
+    // }
 
 	pub fn new()->CTreeViewCtrl{
 		CTreeViewCtrl{

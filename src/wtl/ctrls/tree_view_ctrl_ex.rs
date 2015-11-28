@@ -6,6 +6,7 @@ use winapi::*;
 use std::mem;
 use misc::ToCU16Str;
 use super::CTreeViewCtrl;
+use std::ops::{Deref,DerefMut};
 
 pub struct CTreeViewCtrlEx {
 	base: CTreeViewCtrl,
@@ -23,6 +24,22 @@ pub struct CTreeViewCtrlEx {
 // 		m_hWnd = hWnd;
 // 		return *this;
 // 	}
+
+impl Deref for CTreeViewCtrlEx {
+    type Target = CTreeViewCtrl;
+    fn deref<'a>(&'a self)->&'a CTreeViewCtrl {
+        &self.base
+    }
+}
+
+//impl this for Attach and Detach
+impl DerefMut for CTreeViewCtrlEx {
+    //type Target = CWindow;
+    fn deref_mut<'a>(&'a mut self)->&'a mut CTreeViewCtrl {
+        &mut self.base
+    }
+}
+
 impl CTreeViewCtrlEx {
 	pub fn new()->CTreeViewCtrlEx{
 		CTreeViewCtrlEx{
@@ -33,20 +50,6 @@ impl CTreeViewCtrlEx {
     pub fn cwin(&self)->&CWindow {
 		self.base.cwin()
 	}
-
-	// pub fn cwin_mut(&mut self)->&mut CWindow {
-	// 	self.base.cwin_mut()
-	// }
-    pub fn Attach(&mut self,h: HWND) {
-        self.base.Attach(h)
-    }
-    
-    pub fn Detach(&mut self)->HWND {
-        self.base.Detach()
-    }
-	// pub fn Attach(&mut self,h: HWND) {
-	// 	self.base.cwin_mut().Attach(h);
-	// }
 
 // Operations (overides that return CTreeItem)
 	pub fn InsertItem2(&self,lpInsertStruct: LPTVINSERTSTRUCTW,)->CTreeItem {

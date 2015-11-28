@@ -6,6 +6,7 @@ use std;
 use atl::consts::*;
 use atl::cwindow::*;
 use atl::{thunk,Handler,Event,HandleKey};
+use std::ops::{Deref,DerefMut};
 
 pub struct CWindowImpl<T> {
 	inner: CWindow,
@@ -17,6 +18,20 @@ pub struct CWindowImpl<T> {
     pub handlers: Vec<Handler<T>>,
 }
 
+impl<T> Deref for CWindowImpl<T> {
+    type Target = CWindow;
+    fn deref<'a>(&'a self)->&'a CWindow {
+        &self.inner
+    }
+}
+
+//impl this for Attach and Detach
+impl<T> DerefMut for CWindowImpl<T> {
+    //type Target = CWindow;
+    fn deref_mut<'a>(&'a mut self)->&'a mut CWindow{
+        &mut self.inner
+    }
+}
 
 impl<T> CWindowImpl<T> {
     pub fn new()->CWindowImpl<T> {
@@ -33,13 +48,13 @@ impl<T> CWindowImpl<T> {
     	}
     }
 
-    pub fn Attach(&mut self,h: HWND) {
-        self.inner.Attach(h)
-    }
+    // pub fn Attach(&mut self,h: HWND) {
+    //     self.inner.Attach(h)
+    // }
     
-    pub fn Detach(&mut self)->HWND {
-        self.inner.Detach()
-    }
+    // pub fn Detach(&mut self)->HWND {
+    //     self.inner.Detach()
+    // }
 }
 
 impl<T> CWindowImpl<T> {

@@ -5,9 +5,25 @@ use winapi::*;
 //use user32::*;
 use super::consts::*;
 use super::types::*;
+use std::ops::{Deref,DerefMut};
 
 pub struct CComboBox {
     inner: CWindow,
+}
+
+impl Deref for CComboBox {
+    type Target = CWindow;
+    fn deref<'a>(&'a self)->&'a CWindow {
+        &self.inner
+    }
+}
+
+//impl this for Attach and Detach
+impl DerefMut for CComboBox {
+    //type Target = CWindow;
+    fn deref_mut<'a>(&'a mut self)->&'a mut CWindow{
+        &mut self.inner
+    }
 }
 
 impl CComboBox {
@@ -21,13 +37,13 @@ impl CComboBox {
 		&self.inner
 	}
 
-    pub fn Attach(&mut self,h: HWND) {
-        self.inner.Attach(h)
-    }
+    // pub fn Attach(&mut self,h: HWND) {
+    //     self.inner.Attach(h)
+    // }
     
-    pub fn Detach(&mut self)->HWND {
-        self.inner.Detach()
-    }
+    // pub fn Detach(&mut self)->HWND {
+    //     self.inner.Detach()
+    // }
 	// pub fn cwin_mut(&mut self)->&mut CWindow {
 	// 	&mut self.inner
 	// }

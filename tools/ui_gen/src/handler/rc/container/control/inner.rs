@@ -43,6 +43,13 @@ impl Inner {
 		}
 	}
 
+	//CONTROL         "",IDC_MAIN_TAB,"SysTabControl32",WS_TABSTOP,7,7,498,226
+	pub fn new_tab_view(id: &str, style: &Vec<String>)->Inner {
+		Inner{
+			id: id.to_string(),
+			style: style.clone(),
+		}
+	}
 	/////////////////////////////////////
 	//named controls
 	//PUSHBUTTON      "open",IDC_BTN_OPEN_UDP_PORT,91,16,50,14

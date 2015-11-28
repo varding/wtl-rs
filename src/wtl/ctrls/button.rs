@@ -2,6 +2,7 @@
 #![allow(non_snake_case,dead_code,unused_variables)]
 ///////////////////////////////////////////////////////////////////////////////
 // CButton - client side for a Windows BUTTON control
+use std::ops::{Deref,DerefMut};
 use atl::{CWindow,NULL_HWND};
 //use atl::cwindow::*;
 use winapi::*;
@@ -10,6 +11,21 @@ use super::consts::*;
 
 pub struct CButton {
     inner: CWindow,
+}
+
+impl Deref for CButton {
+    type Target = CWindow;
+    fn deref<'a>(&'a self)->&'a CWindow {
+        &self.inner
+    }
+}
+
+//impl this for Attach and Detach
+impl DerefMut for CButton {
+    //type Target = CWindow;
+    fn deref_mut<'a>(&'a mut self)->&'a mut CWindow{
+        &mut self.inner
+    }
 }
 
 impl CButton {
@@ -23,13 +39,13 @@ impl CButton {
 		&self.inner
 	}
 
-    pub fn Attach(&mut self,h: HWND) {
-        self.inner.Attach(h)
-    }
+    // pub fn Attach(&mut self,h: HWND) {
+    //     self.inner.Attach(h)
+    // }
     
-    pub fn Detach(&mut self)->HWND {
-        self.inner.Detach()
-    }
+    // pub fn Detach(&mut self)->HWND {
+    //     self.inner.Detach()
+    // }
 
 	// pub fn cwin_mut(&mut self)->&mut CWindow {
 	// 	&mut self.inner

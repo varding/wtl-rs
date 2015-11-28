@@ -1,5 +1,5 @@
 #![allow(non_snake_case,dead_code,unused_variables,unused_assignments)]
-
+use std::ops::{Deref,DerefMut};
 use std::{self, ptr};
 use winapi::*;
 use user32;
@@ -41,6 +41,25 @@ fn MAKEINTRESOURCEW(id: WORD) -> LPCWSTR {
     id as usize as LPCWSTR
 }
 
+//This trait allow you to call functions in CWindow
+//compiler looks for a function in Dialog first,if nothing found it will add a "*" to check if the function can be found
+//if functions in both Dialog and CWindow,the functions in Dialogs is choose by the compile
+//so Dialog.cwin() is useful when you want to call functions in CWindow
+impl<T> Deref for Dialog<T> {
+    type Target = CWindow;
+    fn deref<'a>(&'a self)->&'a CWindow {
+        &self.inner
+    }
+}
+
+//impl this for Attach and Detach
+impl<T> DerefMut for Dialog<T> {
+    //type Target = CWindow;
+    fn deref_mut<'a>(&'a mut self)->&'a mut CWindow{
+        &mut self.inner
+    }
+}
+
 //frequently used
 impl<T> Dialog<T> {
     fn InitThunk(&mut self, h: HWND) -> DLGPROC {
@@ -69,14 +88,6 @@ impl<T> Dialog<T> {
 
     pub fn cwin(&self)->&CWindow {
         &self.inner
-    }
-
-    pub fn Attach(&mut self,h: HWND) {
-        self.inner.Attach(h)
-    }
-    
-    pub fn Detach(&mut self)->HWND {
-        self.inner.Detach()
     }
 }
 

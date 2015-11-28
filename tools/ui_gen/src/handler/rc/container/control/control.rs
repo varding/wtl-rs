@@ -14,6 +14,7 @@ pub enum Control {
     ListBox(Inner),
     ListView(Inner),
     TreeView(Inner),
+    TabView(Inner),
     UnKnow(String),
 }
 
@@ -67,6 +68,10 @@ impl Control {
 			"SysTreeView32"=>{
 				println!("tree view");
 				return Control::TreeView(Inner::new_tree_view(v[1], &style));
+			}
+			"SysTabControl32"=>{
+				println!("tab view");
+				return Control::TreeView(Inner::new_tab_view(v[1], &style));
 			}
 			_=>{
 				return Control::UnKnow(data.to_string());

@@ -37,8 +37,12 @@ impl Dialog {
 		let lines: Vec<&str> = ctrls.lines().collect();
 		for l in &lines {
 			let tl = l.trim();
-			//self.parse_ctrl(tl);
-			self.add_ctrl(Control::new(tl));
+			let c = Control::new(tl);
+			//if the control is tabview,add as a container
+			if let Control::TabView(ref t) = c {
+
+			}
+			self.add_ctrl(c);
 		}
 		//println!("dialog: {}\n{:?}",self.id, self.ctrls);
 	}
@@ -63,7 +67,7 @@ impl Dialog {
 
 	/// recusive print 
 	pub fn print(&self,depth: i32) {
-		for i in (0..depth) {
+		for i in 0..depth {
 			print!("    ");
 		}
 		println!("{}", self.id);
