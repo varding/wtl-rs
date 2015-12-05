@@ -20,6 +20,13 @@ pub fn dlg_id_to_name(id: &str)->String {
 	}
 }
 
+pub fn id_to_name(id: &str)->String {
+	if id.starts_with("IDD_") || id.starts_with("IDC_") {
+		id[4..].to_lowercase()
+	}else{
+		id.to_lowercase()
+	}
+}
 
 //from librustc
 pub fn to_camel_case(s: &str) -> String {

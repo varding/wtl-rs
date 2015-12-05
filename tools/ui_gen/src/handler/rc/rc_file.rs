@@ -76,12 +76,12 @@ impl RcFile {
 		}
 	}
 
-	pub fn parse_rc(&self, name: &str) ->RcRoot {
+	pub fn parse_rc(&self, name: &str) ->(RcRoot,Vec<String>) {
 		let buf: Vec<u8>;
 		if let Some(b) = self.read_file(name) {
 			buf = b;
 		}else{
-			return RcRoot::new();
+			return (RcRoot::new(),Vec::new());
 		}
 
 		let txt = self.decode(buf);
@@ -103,10 +103,11 @@ impl RcFile {
 		ret
 	}
 
-	fn extract_rc(&self, txt: &String)->RcRoot {
+	fn extract_rc(&self, txt: &String)->(RcRoot,Vec<String>) {
 		let mut r = RcRoot::new();
 		let re_begin = Regex::new(r"\w+\s+DIALOGEX").unwrap();
 		let re_end = Regex::new(r"\sEND\s").unwrap();
+		let mut all_dlg_ids = Vec::<String>::new();
 		for pos in re_begin.find_iter(txt) {
 			let (start,_) = pos;
 
@@ -119,11 +120,12 @@ impl RcFile {
 				//println!("{}", dlg_block);
 				//println!("block end:{}\n", block_end + start);
 				r.parse_dialog(dlg_id,dlg_block);
+				all_dlg_ids.push(dlg_id.to_string());
 			}else{
 				println!("not block end?");
 			}
 		}
-		r
+		(r,all_dlg_ids)
 	}
 
 	//#define IDC_LST_ALL_DLGS                1001

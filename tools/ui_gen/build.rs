@@ -3,8 +3,8 @@ use std::env;
 use std::path::Path;
 
 fn main() {
-    //link_res("./src/res/ui.rc");
-    link_res("./src/design/utf8/ui.rc");
+    link_res_msvc();
+    //link_res("./src/design/utf8/ui.rc");
 }
 
 fn link_res(rc_path:&str){
@@ -42,13 +42,14 @@ fn link_res(rc_path:&str){
     // if is_x64_rustc {
 
     // }
-    Command::new("windres").arg("-F").arg("pe-x86-64")
-                .arg(obj_path)
-                .status().unwrap();
+    // Command::new("windres").arg("-F").arg("pe-x86-64")
+    //             .arg(obj_path)
+    //             .status().unwrap();
 
-    // Command::new("windres").args(&[&*rc_path,  "-o"])
-    //                       .arg(obj_path)
-    //                       .status().unwrap();
+    Command::new("windres").arg("-F").arg("pe-x86-64")
+                          .args(&[&*rc_path,  "-o"])
+                          .arg(obj_path)
+                          .status().unwrap();
 
     Command::new("ar").args(&["crus", lib_path, obj_path])
                       .current_dir(&Path::new(&out_dir))

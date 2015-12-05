@@ -6,6 +6,7 @@ use std::mem;
 use misc::ToCU16Str;
 use std::ops::{Deref,DerefMut};
 
+#[derive(Debug)]
 pub struct CTreeViewCtrl {
     inner: CWindow,
 }
@@ -106,8 +107,11 @@ impl CTreeViewCtrl {
 		let mut item: TVITEMW = unsafe{mem::uninitialized()};
 		item.hItem = hItem;
 		item.mask = nMask;
+		//hold the vec for lifetime reason
+		let mut tmp: Vec<u16>;
 		if let Some(s) = lpszItem {
-			item.pszText = s.to_c_u16().as_mut_ptr(); //windows will store data??
+			tmp = s.to_c_u16();
+			item.pszText = tmp.as_mut_ptr();	//mut_ptr: windows will store data to this buffer??
 		}else{
 			item.pszText = 0 as LPWSTR;
 		}
@@ -438,8 +442,11 @@ impl CTreeViewCtrl {
 		tvis.hParent = hParent;
 		tvis.hInsertAfter = hInsertAfter;
 		tvis.itemex.mask = nMask;
+		
+		let mut tmp: Vec<u16>;
 		if let Some(s) = lpszItem {
-			tvis.itemex.pszText = s.to_c_u16().as_mut_ptr();
+			tmp = s.to_c_u16();
+			tvis.itemex.pszText = tmp.as_mut_ptr();
 		}else{
 			tvis.itemex.pszText = 0 as LPWSTR;
 		}

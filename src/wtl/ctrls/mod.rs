@@ -10,6 +10,7 @@ pub use self::combo_box_msg::CmbBoxMsg;
 pub use self::edit::CEdit;
 pub use self::edit_msg::EdtMsg;
 //pub use self::tree_item::CTreeItem;
+pub use self::tab_ctrl::CTabCtrl;
 pub use self::tree_view_ctrl::CTreeViewCtrl;
 pub use self::tree_view_ctrl_ex::{CTreeViewCtrlEx,CTreeItem};
 
@@ -26,5 +27,6 @@ mod combo_box;
 mod combo_box_msg;
 mod edit;
 mod edit_msg;
+mod tab_ctrl;
 mod tree_view_ctrl;
 mod tree_view_ctrl_ex;

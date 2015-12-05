@@ -17,6 +17,7 @@ fn GetModuleInstance() -> HINSTANCE {
     0 as HINSTANCE
 }
 
+#[derive(Debug)]
 pub struct CWindow(HWND);
 
 impl CWindow {

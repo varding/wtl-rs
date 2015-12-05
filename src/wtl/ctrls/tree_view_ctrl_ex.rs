@@ -8,6 +8,7 @@ use misc::ToCU16Str;
 use super::CTreeViewCtrl;
 use std::ops::{Deref,DerefMut};
 
+#[derive(Debug)]
 pub struct CTreeViewCtrlEx {
 	base: CTreeViewCtrl,
 	//pub cwin(): CWindow,
@@ -150,8 +151,11 @@ impl CTreeViewCtrlEx {
 		tvis.hParent = hParent;
 		tvis.hInsertAfter = hInsertAfter;
 		tvis.itemex.mask = nMask;
+		//hold the vec for lifetime reason
+		let mut tmp: Vec<u16>;
 		if let Some(s) = lpszItem {
-			tvis.itemex.pszText = s.to_c_u16().as_mut_ptr();
+			tmp = s.to_c_u16();
+			tvis.itemex.pszText = tmp.as_mut_ptr();
 		}else{
 			tvis.itemex.pszText = 0 as LPWSTR;
 		}
@@ -190,6 +194,7 @@ impl CTreeViewCtrlEx {
 }
 
 // Note: TBase here is for CTreeViewCtrlExT, and not for CTreeItemT itself
+#[derive(Debug)]
 pub struct CTreeItem<'a> {
     hItem: HTREEITEM,
     pView: &'a CTreeViewCtrlEx,
@@ -473,7 +478,9 @@ impl<'a> CTreeItem<'a> {
 		ins.hParent = self.hItem;
 		ins.hInsertAfter = hItemAfter;
 		ins.itemex.mask = TVIF_TEXT;
-		ins.itemex.pszText = lpstrItem.to_c_u16().as_mut_ptr();
+		//hold vec returned by to_c_u16 for lifetime reason
+		let mut tmp = lpstrItem.to_c_u16();
+		ins.itemex.pszText = tmp.as_mut_ptr();
 
 		if nImageIndex != -1 {
 			ins.itemex.mask = ins.itemex.mask | (TVIF_IMAGE | TVIF_SELECTEDIMAGE);

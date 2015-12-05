@@ -43,8 +43,10 @@ impl MainDlgHandler {
             SelectDialog::call(&mut *rt,t);
         });
 
-        r.main_dialog.btn_unselect_msg().on_click(|_,t|{
-            UnSelectDialog::call(t);
+        let rt3 = self.rc_root.clone();
+        r.main_dialog.btn_unselect_msg().on_click(move|_,t|{
+            let mut rt = rt3.borrow_mut();
+            UnSelectDialog::call(&mut *rt,t);
         });
 
         let rt4 = self.rc_root.clone();
@@ -59,14 +61,19 @@ impl MainDlgHandler {
 // use struct here intead of mod to avoid import all mod used here
 struct UnSelectDialog;
 impl UnSelectDialog {
-    fn call(t: &mut ui::Root) {
+    // make_path get selected dlgs in RcRoot and then make the path by given path
+    // all dialogs should put back to ui::Root after item deleted
+    // otherwise ,next time make_path will not work(can't find dlgs in RcRoot)
+    fn call(rc_root: &mut RcRoot, t: &mut ui::Root) {
         let item = t.main_dialog.tree_selected_dlgs.GetSelectedItem();
             let sel_txt = item.GetText();
 
             let del_strings = Self::delete_tree(&item);
             for s in &del_strings {
-                t.main_dialog.lst_all_dlgs.AddString(&s[..]);
+                t.main_dialog.lst_all_dlgs.AddString(&s);
         }
+
+        // check unselected item and it's children,if the child is dlg,then add to RcRoot and listbox;if child is other container,then just delete it
     }
 
     fn delete_child(item: &CTreeItem,item_strings: &mut Vec<String>)->bool {
@@ -97,7 +104,7 @@ impl UnSelectDialog {
 }
 
 fn parse_msg(t: &mut ui::Root)->RcRoot {
-        //delete existing items
+    //delete existing items
     t.main_dialog.lst_all_dlgs.ResetContent();
     //this does not work
     //t.main_dialog.tree_selected_dlgs.DeleteAllItems();
@@ -112,10 +119,10 @@ fn parse_msg(t: &mut ui::Root)->RcRoot {
 
     let rf = RcFile;
     let p = t.main_dialog.edt_rc_path.GetWindowText();
-    let mut rc_root = rf.parse_rc(&p);
+    let (mut rc_root,ids) = rf.parse_rc(&p);
 
     // show all dialog names
-    for (id,_) in &rc_root.dlgs {
+    for id in &ids {
         t.main_dialog.lst_all_dlgs.AddString(id);
     }
     
@@ -133,45 +140,87 @@ fn parse_msg(t: &mut ui::Root)->RcRoot {
 struct SelectDialog;
 impl SelectDialog {
     fn call(rc_root: &mut RcRoot, t: &mut ui::Root) {
+        /*
+        items in listbox are all dialogs,when selecting a dialog,all containers in it will be added as children in tree_ctrl
+        items in tree_ctrl store node type(dialog/container) in itemdata
+        when unselect a item,the item type must be check,if the item is container then delete it directly,else push it to the listbox
+        */
+
         //get selected list item
         let mut lst_sel = t.main_dialog.lst_all_dlgs.GetCurSel();
         if lst_sel == -1 {
             return;
         }
+        //get text of selected item
         let lst_sel_txt = t.main_dialog.lst_all_dlgs.GetText(lst_sel);
+
+        //delete the selected item in listbox
         t.main_dialog.lst_all_dlgs.DeleteString(lst_sel as UINT);
-        //select next one
+        //select the item before the deleted one
         if lst_sel > 0 {
             lst_sel -= 1;
         }
+        //do selection
         t.main_dialog.lst_all_dlgs.SetCurSel(lst_sel);
 
-        //let tree_sel_txt = t.main_dialog.tree_selected_dlgs.GetSelectedItem().GetText();
+        //get selected item of tree_ctrl
         let item = t.main_dialog.tree_selected_dlgs.GetSelectedItem();
-        item.AddTail(&lst_sel_txt[..],-1);
+
+        //add the selected item in listbox to the tree_ctrl
+        //return the item inserted just now
+        let new_item = item.AddTail(&lst_sel_txt,-1);
+
+        //get abs path of the selected item in tree_view
+        let mut path = Self::get_item_path(&item);
+        println!("{:?}", path);
+        
+        let child_container = rc_root.make_path(&lst_sel_txt,&mut path);
+
+        // if the selected item has child container,then add to the tree_view
+        for c in child_container {
+            new_item.AddTail(&c,-1);
+        }
+
+        //println!("{}", rc_root);
+        rc_root.print();
+
+        //check if the container has child containers
+
+
+
         //expand the button of a new item manually
         //http://www.go4expert.com/forums/i-refresh-expand-sign-treeview-control-t15764/
         item.Expand(None);
-
-        //construct the tree architecture defined by user
-        let mut p: Vec<String> = Vec::new();
-        Self::get_item_path(&item,&mut p);
-        //println!("{},{:?}",lst_sel_txt, p);
-        rc_root.make_path(&lst_sel_txt[..],&mut p);
-        //println!("{}", rc_root);
-        rc_root.print();
     }
 
-    fn get_item_path(item: &CTreeItem,p: &mut Vec<String>) {
-        if item.IsNull() {
-            return;
+    //get path in the reverse order
+    //e.g  [about_dlg,main_dlg,root]
+    // fn get_item_path(item: &CTreeItem,p: &mut Vec<String>) {
+    //     if item.IsNull() {
+    //         return;
+    //     }
+
+    //     // put the deeper item in the front,it is useful for parse the path
+    //     p.push(item.GetText());
+
+    //     let parent = item.GetParent();
+        
+    //     Self::get_item_path(&parent,p);
+    // }
+
+    fn get_item_path(item: &CTreeItem)->Vec<String> {
+        let parent = item.GetParent();
+        if parent.IsNull() {
+            //Root
+            let mut v = Vec::new();
+            v.push(item.GetText());
+            return v;
         }
 
+        let mut v = Self::get_item_path(&parent);
         // put the deeper item in the front,it is useful for parse the path
-        p.push(item.GetText());
-
-        let parent = item.GetParent();
-        
-        Self::get_item_path(&parent,p);
+        v.push(item.GetText());
+        //println!("get_item_path:{:?}", v);
+        v
     }
 }
