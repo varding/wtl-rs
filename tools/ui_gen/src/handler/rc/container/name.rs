@@ -118,7 +118,7 @@ impl Name {
             id: id.to_string(),
             var_name: var_name,
             type_name: type_name,
-            wtl_name: "CTreeViewCtrl",
+            wtl_name: "CTreeViewCtrlEx",
             msg_name: "TreeMsg",
             handler_name: "tree_handler",
         }

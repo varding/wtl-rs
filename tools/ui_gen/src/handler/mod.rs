@@ -4,4 +4,3 @@ pub use self::rc::{RcFile,RcRoot};
 
 mod main_dialog;
 mod rc;
-pub mod system;

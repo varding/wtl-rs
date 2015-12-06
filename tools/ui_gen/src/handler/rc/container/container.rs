@@ -232,12 +232,12 @@ impl Container {
         //all container call register handler of all it's children
         let children_register = self.children.iter().map(|(_,child)|{
             format!(tpl_binding!(call_child),var_name=child.name.var_name)
-        }).collect::<Vec<_>>().concat();
+        }).collect::<Vec<_>>().concat().trim().to_string();
 
         //add use in file
         let use_children_mod = self.children.iter().map(|(_,child)|{
             format!(tpl_binding!(use_child),var_name=child.name.var_name)
-        }).collect::<Vec<_>>().concat();
+        }).collect::<Vec<_>>().concat().trim().to_string();
         //different container will give it's own impl
         let mut this_handler = String::new();
         match self.tp {
@@ -286,11 +286,11 @@ impl Container {
         //ctrl decl if exist
         self.ctrls.iter().map(|ctrl|{
             if let Some(ref n) = ctrl.name_for_file() {
-                format!(tpl_binding!(ctrl),ui_path=ui_path,var_name=self.name.var_name,id=self.name.id)
+                format!(tpl_binding!(ctrl),ui_path=ui_path,var_name=n.var_name,id=n.id)
             }else{
                 String::new()
             }
-        }).collect::<Vec<_>>().concat()
+        }).collect::<Vec<_>>().concat().trim().to_string()
     }
 }
 
@@ -303,7 +303,10 @@ pub use self::{var_name}::*;
 ("mod sub_{var_name};
 pub use self::sub_{var_name}::*;");
     (root) =>
-("pub use self::consts::*;
+("
+mod consts;
+pub use self::consts::*;
+mod message_loop;
 pub use self::message_loop::MessageLoop;
 mod handler;
 pub use self::handler::*;");
@@ -336,30 +339,39 @@ pub struct {tp_name}<T> {{
 pub struct Root {{
     {children_decl}
 }}");
-(child)=>("
-	pub {var_name}: {tp_name},");
+    (child)=>("
+	pub {var_name}: {tp_name}<T>,");
+    (root_child)=>("
+    pub {var_name}: {tp_name}<Root>,");
+    (ctrl)=>("
+    pub {var_name}: {wtl_name},");
 }
 //.rs file contains decl,impl and a mod.rs file
 impl Container {
 	fn format_decl(&self)->String {
-        //children decl
-        let children_decl = self.children.iter().map(|(_,child)|{
-            format!(tpl_decl!(child),var_name=child.name.var_name,tp_name=child.name.type_name)
-        }).collect::<Vec<_>>().concat();
-
         match self.tp {
             ContainerType::Root=> {
+                //children decl
+                let children_decl = self.children.iter().map(|(_,child)|{
+                    format!(tpl_decl!(root_child),var_name=child.name.var_name,tp_name=child.name.type_name)
+                }).collect::<Vec<_>>().concat().trim().to_string();
+
                 return format!(tpl_decl!(root),children_decl=children_decl);
             }
             _=> {
+                //children decl
+                let children_decl = self.children.iter().map(|(_,child)|{
+                    format!(tpl_decl!(child),var_name=child.name.var_name,tp_name=child.name.type_name)
+                }).collect::<Vec<_>>().concat().trim().to_string();
+
                 //control declaration
                 let ctrl_decl = self.ctrls.iter().map(|ctrl|{
                     if let Some(ref n) = ctrl.name_for_file() {
-                        format!(tpl_decl!(child),var_name=n.var_name,tp_name=n.type_name)
+                        format!(tpl_decl!(ctrl),var_name=n.var_name,wtl_name=n.wtl_name)
                     }else{
                         String::new()
                     }
-                }).collect::<Vec<_>>().concat();
+                }).collect::<Vec<_>>().concat().trim().to_string();
 
                 return format!(tpl_decl!(container),
                     tp_name=self.name.type_name,
@@ -406,6 +418,7 @@ macro_rules! tpl_new {
 		{tp_name}{{
 			this: {wtl_name}::new({id}),
 			{children_new}
+            {ctrl_new}
 		}}
 	}}");
     (root) => ("
@@ -415,23 +428,34 @@ macro_rules! tpl_new {
         }}
     }}");
 	(child) => ("
-			{var_name}: {wtl_name}::new(),");
+			{var_name}: {tp_name}::new(),");
+    (ctrl) => ("
+            {var_name}: {wtl_name}::new(),");
 }
 //impl contains new,create,msg
 impl Container {
     fn format_new(&self)->String {
     	let children_new = self.children.iter().map(|(_,child)|{
-    		format!(tpl_new!(child),var_name=child.name.var_name,wtl_name=child.name.wtl_name)
-    	}).collect::<Vec<_>>().concat();
+    		format!(tpl_new!(child),var_name=child.name.var_name,tp_name=child.name.type_name)
+    	}).collect::<Vec<_>>().concat().trim().to_string();
         match self.tp {
             ContainerType::Root=> {
                 return format!(tpl_new!(root),children_new=children_new);
             }
             _=>{
+                let ctrl_new = self.ctrls.iter().map(|ctrl|{
+                    if let Some(n) = ctrl.name_for_file() {
+                        format!(tpl_new!(ctrl),var_name=n.var_name,wtl_name=n.wtl_name)
+                    }else{
+                        String::new()
+                    }
+                }).collect::<Vec<_>>().concat().trim().to_string();
+
                 return format!(tpl_new!(container),
                     id=self.name.id,
                     tp_name=self.name.type_name,
                     wtl_name=self.name.wtl_name,
+                    ctrl_new=ctrl_new,
                     children_new=children_new);
             }
         }
@@ -468,7 +492,7 @@ impl Container {
     			},
     			_=>String::new(),
     		}
-    	}).collect::<Vec<_>>().concat();
+    	}).collect::<Vec<_>>().concat().trim().to_string();
 
     	match self.tp {
     		ContainerType::Dialog=>{
@@ -505,7 +529,7 @@ impl Container {
     		}else{
     			String::new()
     		}
-    	}).collect::<Vec<_>>().concat();
+    	}).collect::<Vec<_>>().concat().trim().to_string();
 
     	format!(tpl_msg!(container),msg_name=self.name.msg_name,ctrl_msg=ctrl_msg)
     }

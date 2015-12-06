@@ -12,15 +12,14 @@ extern crate comctl32;
 mod ui;
 mod handler;
 
-use ui::{Root,MessageLoop};
 use handler::MainDlgHandler;
 
 fn main() {
-    let mut root = Root::new();
+    let mut root = ui::Root::new();
     
     //register some default behavior generate by ui_gen tool
-    handler::system::register_handler(&mut root);
-    
+    ui::register_handler(&mut root);
+
     //register user defined handlers
     let h = MainDlgHandler::new();
     h.register_handler(&mut root);
@@ -28,9 +27,6 @@ fn main() {
     //create dialogs that managered by ui_gen tool
     root.create();
 
-    // unsafe{
-    //     *(0 as *mut i32) = 100;
-    // }
     //run message loop
-    MessageLoop::run();
+    ui::MessageLoop::run();
 }
