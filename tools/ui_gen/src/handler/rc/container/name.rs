@@ -1,6 +1,4 @@
 
-use handler::rc::util::*;
-
 pub struct Name {
     pub id: String,				//id in resource.h		ID_MAIN_DIALOG
     pub var_name: String,		//variable name: main_dialog
@@ -8,6 +6,25 @@ pub struct Name {
     pub wtl_name: &'static str,		//wtl name: Dialog,Button,TabView
     pub msg_name: &'static str,		//msg name: DlgMsg,BtnMsg
     pub handler_name: &'static str,	//handler name: self.this.btn_handler(IDC_BTN_SELECT)
+}
+
+fn id_to_name(id: &str)->String {
+    if id.starts_with("IDD_") || id.starts_with("IDC_") {
+        id[4..].to_lowercase()
+    }else{
+        id.to_lowercase()
+    }
+}
+
+//from librustc
+fn to_camel_case(s: &str) -> String {
+    s.split('_').flat_map(|word| word.chars().enumerate().map(|(i, c)|
+        if i == 0 {
+            c.to_uppercase().collect::<String>()
+        } else {
+            c.to_lowercase().collect()
+        }
+    )).collect::<Vec<_>>().concat()
 }
 
 /// var_name and type_name
@@ -36,8 +53,8 @@ impl Name {
     pub fn root()->Name {
         Name {
             id: "Root".to_string(),
-            var_name: "".to_string(),
-            type_name: "".to_string(),
+            var_name: "root".to_string(),
+            type_name: "Root".to_string(),
             wtl_name: "Root",
             msg_name: "",
             handler_name: "",

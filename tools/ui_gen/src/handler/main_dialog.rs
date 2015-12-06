@@ -72,7 +72,7 @@ impl UnSelectDialog {
             for s in &del_strings {
                 t.main_dialog.lst_all_dlgs.AddString(&s);
         }
-
+        //rc_root.delete_path(p)
         // check unselected item and it's children,if the child is dlg,then add to RcRoot and listbox;if child is other container,then just delete it
     }
 
@@ -186,28 +186,12 @@ impl SelectDialog {
 
         //check if the container has child containers
 
-
-
         //expand the button of a new item manually
         //http://www.go4expert.com/forums/i-refresh-expand-sign-treeview-control-t15764/
         item.Expand(None);
     }
 
-    //get path in the reverse order
-    //e.g  [about_dlg,main_dlg,root]
-    // fn get_item_path(item: &CTreeItem,p: &mut Vec<String>) {
-    //     if item.IsNull() {
-    //         return;
-    //     }
-
-    //     // put the deeper item in the front,it is useful for parse the path
-    //     p.push(item.GetText());
-
-    //     let parent = item.GetParent();
-        
-    //     Self::get_item_path(&parent,p);
-    // }
-
+    //e.g  [Root,IDD_MAIN_DIALOG,IDD_ABOUT_DLG]
     fn get_item_path(item: &CTreeItem)->Vec<String> {
         let parent = item.GetParent();
         if parent.IsNull() {
@@ -218,9 +202,7 @@ impl SelectDialog {
         }
 
         let mut v = Self::get_item_path(&parent);
-        // put the deeper item in the front,it is useful for parse the path
         v.push(item.GetText());
-        //println!("get_item_path:{:?}", v);
         v
     }
 }

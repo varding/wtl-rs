@@ -326,7 +326,7 @@ impl Inner {
 	pub fn CreateDC(&mut self,lpszDriverName: Option<&str>,lpszDeviceName: Option<&str>,lpszOutput: Option<&str>,lpInitData: &DEVMODEW)->HDC {
 		debug_assert!(self.hdc == NULL_HDC);
 		//hold vec returned by to_c_u16 for lifetime reason
-		let mut tmp1: Vec<u16>;
+		let tmp1: Vec<u16>;
 		let driver_name = if let Some(p1) = lpszDriverName{
 			tmp1 = p1.to_c_u16();
 			tmp1.as_ptr()
@@ -334,7 +334,7 @@ impl Inner {
 			0 as *const u16
 		};
 		//hold vec returned by to_c_u16 for lifetime reason
-		let mut tmp2: Vec<u16>;
+		let tmp2: Vec<u16>;
 		let device_name = if let Some(p2) = lpszDeviceName{
 			tmp2 = p2.to_c_u16();
 			tmp2.as_ptr()
@@ -343,7 +343,7 @@ impl Inner {
 		};
 
 		//hold vec returned by to_c_u16 for lifetime reason
-		let mut tmp3: Vec<u16>;
+		let tmp3: Vec<u16>;
 		let out = if let Some(p3) = lpszOutput{
 			tmp3 = p3.to_c_u16();
 			tmp3.as_ptr()
