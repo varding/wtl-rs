@@ -194,13 +194,13 @@ pub fn register_handler(r: &mut Root) {{
     {children_register}
 }}");
     (dlg) => ("
-    r.{ui_path}.this_msg().on_init_dialog(|_,t|{{
-        t.{ui_path}.this.CenterWindow(0 as HWND);
-        let this = &t.{ui_path}.this;
+    r{ui_path}.this_msg().on_init_dialog(|_,t|{{
+        t{ui_path}.this.CenterWindow(0 as HWND);
+        let this = &t{ui_path}.this;
         {ctrl_binding}
     }}).set_system_priority(0);");
     (ctrl) => ("
-        t.{ui_path}.{var_name}.Attach(this.GetDlgItem({id}));");
+        t{ui_path}.{var_name}.Attach(this.GetDlgItem({id}));");
     (call_child) => ("
         {var_name}::register_handler(r);
         ");
@@ -222,7 +222,7 @@ impl Container {
         }
 
         //path container or ctrl in the ui tree
-        let ui_path = ui_path_vec.concat();
+        let ui_path = ui_path_vec.join(".");
         //write child binding first
         for (_,child) in &self.children {
             child.write_binding_file(p,ui_path_vec);

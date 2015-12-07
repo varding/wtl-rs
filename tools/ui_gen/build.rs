@@ -3,8 +3,8 @@ use std::env;
 use std::path::Path;
 
 fn main() {
-    //link_res_msvc();
-    link_res("./src/design/utf8/ui.rc");
+    link_res_msvc();
+    //link_res("./src/design/utf8/ui.rc");
 }
 
 fn link_res(rc_path:&str){
