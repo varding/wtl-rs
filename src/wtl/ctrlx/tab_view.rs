@@ -1,5 +1,12 @@
 
-
+#![allow(non_snake_case,dead_code,unused_variables)]
+///////////////////////////////////////////////////////////////////////////////
+// CButton - client side for a Windows BUTTON control
+use std::ops::{Deref,DerefMut};
+use atl::{CWindow,NULL_HWND};
+//use atl::cwindow::*;
+use winapi::*;
+//use user32::*;
 
 ///////////////////////////////////////////////////////////////////////////////
 // CTabView - implements tab view window
@@ -17,10 +24,74 @@
 
 // typedef TBVCONTEXTMENUINFO* LPTBVCONTEXTMENUINFO;
 
-pub struct CTabView {
-    field: Type
-}
+// TabView must impl this trait
+// pub trait TabDerive {	
+// 	fn IsValidPageIndex(&self, nPage: int)-> bool;
 
+// 	fn MovePage(&self, nMovePage: int, nInsertBeforePage: int)-> bool;
+
+// // Implementation overrideables
+// 	fn CreateTabControl(&self)-> bool;
+
+// 	fn CalcTabHeight(&self)-> int;
+
+// 	fn ShowTabControl(&self, bShow: bool);
+
+// 	fn UpdateLayout(&self);
+
+// 	fn UpdateMenu(&self);
+
+// 	fn UpdateTitleBar(&self);
+
+// 	fn DrawMoveMark(&self, nItem: int);
+
+// 	fn GetMoveMarkRect(&self, rect: &RECT);
+
+// 	fn SetMoveCursor(&self, bCanMove: bool);
+
+// 	fn GenerateDragImage(&self, nItem: int);
+
+// 	//fn ShortenTitle(LPCTSTR lpstrTitle, LPTSTR lpstrShortTitle, int cchShortTitle);
+// 	fn ShortenTitle(&self, lpstrTitle: &str)-> String;
+
+// 	fn UpdateTooltipText(&self, pTTDI: &NMTTDISPINFO);
+
+// // Text for menu items and title bar - override to provide different strings
+// 	fn GetEmptyListText()->String;
+
+// 	fn GetWindowsMenuItemText()->String;
+
+// 	fn GetTitleDividerText()->String;
+// }
+
+
+pub struct CTabView {
+    idd: WORD,
+}
+//T: ui::Root
+//TabTrait: 
+// pub struct CTabViewImpl<T,D:TabDerive> {
+//     //cwin: CWindow,
+//     //tab_ctrl: 
+//     derive: *mut D,
+//     idd: WORD, // resource id of the dlg
+//     root:*mut T, //raw pointer to the Root Dialogs
+// }
+
+// impl<T,D:TabDerive> CTabViewImpl<T,D> {
+//     pub fn new(idd: WORD)-> CTabViewImpl<T> {
+//     	CTabViewImpl{
+//     		idd: idd,
+//     		cwin: CWindow::new(NULL_HWND),
+//     		root: 0 as *mut T,
+//     	}
+//     }
+// }
+
+// impl<T,D:TabDerive> CTabViewImpl<T> {
+ 
+// }	
+/*
 template <class T, class TBase = ATL::CWindow, class TWinTraits = ATL::CControlWinTraits>
 class ATL_NO_VTABLE CTabViewImpl : public ATL::CWindowImpl< T, TBase, TWinTraits >
 {
@@ -955,326 +1026,7 @@ public:
 		return 0;
 	}
 
-// Implementation helpers
-	bool IsValidPageIndex(int nPage) const
-	{
-		return (nPage >= 0 && nPage < GetPageCount());
-	}
 
-	bool MovePage(int nMovePage, int nInsertBeforePage)
-	{
-		ATLASSERT(IsValidPageIndex(nMovePage));
-		ATLASSERT(IsValidPageIndex(nInsertBeforePage));
-
-		if(!IsValidPageIndex(nMovePage) || !IsValidPageIndex(nInsertBeforePage))
-			return false;
-
-		if(nMovePage == nInsertBeforePage)
-			return true;   // nothing to do
-
-		CTempBuffer<TCHAR, _WTL_STACK_ALLOC_THRESHOLD> buff;
-		LPTSTR lpstrTabText = buff.Allocate(m_cchTabTextLength + 1);
-		if(lpstrTabText == NULL)
-			return false;
-		TCITEMEXTRA tcix = { 0 };
-		tcix.tciheader.mask = TCIF_TEXT | TCIF_IMAGE | TCIF_PARAM;
-		tcix.tciheader.pszText = lpstrTabText;
-		tcix.tciheader.cchTextMax = m_cchTabTextLength + 1;
-		BOOL bRet = m_tab.GetItem(nMovePage, tcix);
-		ATLASSERT(bRet != FALSE);
-		if(bRet == FALSE)
-			return false;
-
-		int nInsertItem = (nInsertBeforePage > nMovePage) ? nInsertBeforePage + 1 : nInsertBeforePage;
-		int nNewItem = m_tab.InsertItem(nInsertItem, tcix);
-		ATLASSERT(nNewItem == nInsertItem);
-		if(nNewItem != nInsertItem)
-		{
-			ATLVERIFY(m_tab.DeleteItem(nNewItem));
-			return false;
-		}
-
-		if(nMovePage > nInsertBeforePage)
-			ATLVERIFY(m_tab.DeleteItem(nMovePage + 1) != FALSE);
-		else if(nMovePage < nInsertBeforePage)
-			ATLVERIFY(m_tab.DeleteItem(nMovePage) != FALSE);
-
-		SetActivePage(nInsertBeforePage);
-		T* pT = static_cast<T*>(this);
-		pT->OnPageActivated(m_nActivePage);
-
-		return true;
-	}
-
-// Implementation overrideables
-	bool CreateTabControl()
-	{
-#ifndef _WIN32_WCE
-		m_tab.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | TCS_TOOLTIPS, 0, m_nTabID);
-#else // CE specific
-		m_tab.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0, m_nTabID);
-#endif // _WIN32_WCE
-		ATLASSERT(m_tab.m_hWnd != NULL);
-		if(m_tab.m_hWnd == NULL)
-			return false;
-
-		m_tab.SetFont(AtlCreateControlFont());
-		m_bInternalFont = true;
-
-		m_tab.SetItemExtra(sizeof(TABVIEWPAGE));
-
-		T* pT = static_cast<T*>(this);
-		m_cyTabHeight = pT->CalcTabHeight();
-
-		return true;
-	}
-
-	int CalcTabHeight()
-	{
-		int nCount = m_tab.GetItemCount();
-		TCITEMEXTRA tcix = { 0 };
-		tcix.tciheader.mask = TCIF_TEXT;
-		tcix.tciheader.pszText = _T("NS");
-		int nIndex = m_tab.InsertItem(nCount, tcix);
-
-		RECT rect = { 0, 0, 1000, 1000 };
-		m_tab.AdjustRect(FALSE, &rect);
-
-		RECT rcWnd = { 0, 0, 1000, rect.top };
-		::AdjustWindowRectEx(&rcWnd, m_tab.GetStyle(), FALSE, m_tab.GetExStyle());
-
-		int nHeight = rcWnd.bottom - rcWnd.top;
-
-		m_tab.DeleteItem(nIndex);
-
-		return nHeight;
-	}
-
-	void ShowTabControl(bool bShow)
-	{
-		m_tab.ShowWindow(bShow ? SW_SHOWNOACTIVATE : SW_HIDE);
-		T* pT = static_cast<T*>(this);
-		pT->UpdateLayout();
-	}
-
-	void UpdateLayout()
-	{
-		RECT rect = { 0 };
-		GetClientRect(&rect);
-
-		int cyOffset = 0;
-		if(m_tab.IsWindow() && ((m_tab.GetStyle() & WS_VISIBLE) != 0))
-		{
-			m_tab.SetWindowPos(NULL, 0, 0, rect.right - rect.left, m_cyTabHeight, SWP_NOZORDER);
-			cyOffset = m_cyTabHeight;
-		}
-
-		if(m_nActivePage != -1)
-			::SetWindowPos(GetPageHWND(m_nActivePage), NULL, 0, cyOffset, rect.right - rect.left, rect.bottom - rect.top - cyOffset, SWP_NOZORDER);
-	}
-
-	void UpdateMenu()
-	{
-		if(m_menu.m_hMenu != NULL)
-			BuildWindowMenu(m_menu, m_nMenuItemsCount, m_bEmptyMenuItem, m_bWindowsMenuItem, m_bActivePageMenuItem, m_bActiveAsDefaultMenuItem);
-	}
-
-	void UpdateTitleBar()
-	{
-		if(!m_wndTitleBar.IsWindow() || m_lpstrTitleBarBase == NULL)
-			return;   // nothing to do
-
-		if(m_nActivePage != -1)
-		{
-			T* pT = static_cast<T*>(this);
-			LPCTSTR lpstrTitle = pT->GetPageTitle(m_nActivePage);
-			LPCTSTR lpstrDivider = pT->GetTitleDividerText();
-			int cchBuffer = m_cchTitleBarLength + lstrlen(lpstrDivider) + lstrlen(m_lpstrTitleBarBase) + 1;
-			CTempBuffer<TCHAR, _WTL_STACK_ALLOC_THRESHOLD> buff;
-			LPTSTR lpstrPageTitle = buff.Allocate(cchBuffer);
-			ATLASSERT(lpstrPageTitle != NULL);
-			if(lpstrPageTitle != NULL)
-			{
-				pT->ShortenTitle(lpstrTitle, lpstrPageTitle, m_cchTitleBarLength + 1);
-				SecureHelper::strcat_x(lpstrPageTitle, cchBuffer, lpstrDivider);
-				SecureHelper::strcat_x(lpstrPageTitle, cchBuffer, m_lpstrTitleBarBase);
-			}
-			else
-			{
-				lpstrPageTitle = m_lpstrTitleBarBase;
-			}
-
-			m_wndTitleBar.SetWindowText(lpstrPageTitle);
-		}
-		else
-		{
-			m_wndTitleBar.SetWindowText(m_lpstrTitleBarBase);
-		}
-	}
-
-	void DrawMoveMark(int nItem)
-	{
-		T* pT = static_cast<T*>(this);
-
-		if(m_nInsertItem != -1)
-		{
-			RECT rect = { 0 };
-			pT->GetMoveMarkRect(rect);
-			m_tab.InvalidateRect(&rect);
-		}
-
-		m_nInsertItem = nItem;
-
-		if(m_nInsertItem != -1)
-		{
-			CClientDC dc(m_tab.m_hWnd);
-
-			RECT rect = { 0 };
-			pT->GetMoveMarkRect(rect);
-
-			CPen pen;
-			pen.CreatePen(PS_SOLID, 1, ::GetSysColor(COLOR_WINDOWTEXT));
-			CBrush brush;
-			brush.CreateSolidBrush(::GetSysColor(COLOR_WINDOWTEXT));
-
-			HPEN hPenOld = dc.SelectPen(pen);
-			HBRUSH hBrushOld = dc.SelectBrush(brush);
-
-			int x = rect.left;
-			int y = rect.top;
-			POINT ptsTop[3] = { { x, y }, { x + m_cxMoveMark, y }, { x + (m_cxMoveMark / 2), y + m_cyMoveMark } };
-			dc.Polygon(ptsTop, 3);
-
-			y = rect.bottom - 1;
-			POINT ptsBottom[3] = { { x, y }, { x + m_cxMoveMark, y }, { x + (m_cxMoveMark / 2), y - m_cyMoveMark } };
-			dc.Polygon(ptsBottom, 3);
-
-			dc.SelectPen(hPenOld);
-			dc.SelectBrush(hBrushOld);
-		}
-	}
-
-	void GetMoveMarkRect(RECT& rect) const
-	{
-		m_tab.GetClientRect(&rect);
-
-		RECT rcItem = { 0 };
-		m_tab.GetItemRect(m_nInsertItem, &rcItem);
-
-		if(m_nInsertItem <= m_nActivePage)
-		{
-			rect.left = rcItem.left - m_cxMoveMark / 2 - 1;
-			rect.right = rcItem.left + m_cxMoveMark / 2;
-		}
-		else
-		{
-			rect.left = rcItem.right - m_cxMoveMark / 2 - 1;
-			rect.right = rcItem.right + m_cxMoveMark / 2;
-		}
-	}
-
-	void SetMoveCursor(bool bCanMove)
-	{
-		::SetCursor(::LoadCursor(NULL, bCanMove ? IDC_ARROW : IDC_NO));
-	}
-
-	void GenerateDragImage(int nItem)
-	{
-		ATLASSERT(IsValidPageIndex(nItem));
-
-#ifndef _WIN32_WCE
-		RECT rcItem = { 0 };
-		m_tab.GetItemRect(nItem, &rcItem);
-		::InflateRect(&rcItem, 2, 2);   // make bigger to cover selected item
-#else // CE specific
-		nItem;   // avoid level 4 warning
-		RECT rcItem = { 0, 0, 40, 20 };
-#endif // _WIN32_WCE
-
-		ATLASSERT(m_ilDrag.m_hImageList == NULL);
-		m_ilDrag.Create(rcItem.right - rcItem.left, rcItem.bottom - rcItem.top, ILC_COLORDDB | ILC_MASK, 1, 1);
-
-		CClientDC dc(m_hWnd);
-		CDC dcMem;
-		dcMem.CreateCompatibleDC(dc);
-		ATLASSERT(dcMem.m_hDC != NULL);
-		dcMem.SetViewportOrg(-rcItem.left, -rcItem.top);
-
-		CBitmap bmp;
-		bmp.CreateCompatibleBitmap(dc, rcItem.right - rcItem.left, rcItem.bottom - rcItem.top);
-		ATLASSERT(bmp.m_hBitmap != NULL);
-
-		HBITMAP hBmpOld = dcMem.SelectBitmap(bmp);
-#ifndef _WIN32_WCE
-		m_tab.SendMessage(WM_PRINTCLIENT, (WPARAM)dcMem.m_hDC);
-#else // CE specific
-		dcMem.Rectangle(&rcItem);
-#endif // _WIN32_WCE
-		dcMem.SelectBitmap(hBmpOld);
-
-		ATLVERIFY(m_ilDrag.Add(bmp.m_hBitmap, RGB(255, 0, 255)) != -1);
-	}
-
-	void ShortenTitle(LPCTSTR lpstrTitle, LPTSTR lpstrShortTitle, int cchShortTitle)
-	{
-		if(lstrlen(lpstrTitle) >= cchShortTitle)
-		{
-			LPCTSTR lpstrEllipsis = _T("...");
-			int cchEllipsis = lstrlen(lpstrEllipsis);
-			SecureHelper::strncpy_x(lpstrShortTitle, cchShortTitle, lpstrTitle, cchShortTitle - cchEllipsis - 1);
-			SecureHelper::strcat_x(lpstrShortTitle, cchShortTitle, lpstrEllipsis);
-		}
-		else
-		{
-			SecureHelper::strcpy_x(lpstrShortTitle, cchShortTitle, lpstrTitle);
-		}
-	}
-
-#ifndef _WIN32_WCE
-	void UpdateTooltipText(LPNMTTDISPINFO pTTDI)
-	{
-		ATLASSERT(pTTDI != NULL);
-		pTTDI->lpszText = (LPTSTR)GetPageTitle((int)pTTDI->hdr.idFrom);
-	}
-#endif // !_WIN32_WCE
-
-// Text for menu items and title bar - override to provide different strings
-	static LPCTSTR GetEmptyListText()
-	{
-		return _T("(Empty)");
-	}
-
-	static LPCTSTR GetWindowsMenuItemText()
-	{
-		return _T("&Windows...");
-	}
-
-	static LPCTSTR GetTitleDividerText()
-	{
-		return _T(" - ");
-	}
-
-// Notifications - override to provide different behavior
-	void OnPageActivated(int nPage)
-	{
-		NMHDR nmhdr = { 0 };
-		nmhdr.hwndFrom = m_hWnd;
-		nmhdr.idFrom = nPage;
-		nmhdr.code = TBVN_PAGEACTIVATED;
-		::SendMessage(GetParent(), WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&nmhdr);
-	}
-
-	void OnContextMenu(int nPage, POINT pt)
-	{
-		m_tab.ClientToScreen(&pt);
-
-		TBVCONTEXTMENUINFO cmi = { 0 };
-		cmi.hdr.hwndFrom = m_hWnd;
-		cmi.hdr.idFrom = nPage;
-		cmi.hdr.code = TBVN_CONTEXTMENU;
-		cmi.pt = pt;
-		::SendMessage(GetParent(), WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&cmi);
-	}
 };
 
 class CTabView : public CTabViewImpl<CTabView>
@@ -1282,3 +1034,329 @@ class CTabView : public CTabViewImpl<CTabView>
 public:
 	DECLARE_WND_CLASS_EX(_T("WTL_TabView"), 0, COLOR_APPWORKSPACE)
 };
+
+*/
+
+// default impl
+//impl CTabViewImpl {
+ // Implementation helpers
+// 	bool IsValidPageIndex(int nPage) const
+// 	{
+// 		return (nPage >= 0 && nPage < GetPageCount());
+// 	}
+
+// 	bool MovePage(int nMovePage, int nInsertBeforePage)
+// 	{
+// 		ATLASSERT(IsValidPageIndex(nMovePage));
+// 		ATLASSERT(IsValidPageIndex(nInsertBeforePage));
+
+// 		if(!IsValidPageIndex(nMovePage) || !IsValidPageIndex(nInsertBeforePage))
+// 			return false;
+
+// 		if(nMovePage == nInsertBeforePage)
+// 			return true;   // nothing to do
+
+// 		CTempBuffer<TCHAR, _WTL_STACK_ALLOC_THRESHOLD> buff;
+// 		LPTSTR lpstrTabText = buff.Allocate(m_cchTabTextLength + 1);
+// 		if(lpstrTabText == NULL)
+// 			return false;
+// 		TCITEMEXTRA tcix = { 0 };
+// 		tcix.tciheader.mask = TCIF_TEXT | TCIF_IMAGE | TCIF_PARAM;
+// 		tcix.tciheader.pszText = lpstrTabText;
+// 		tcix.tciheader.cchTextMax = m_cchTabTextLength + 1;
+// 		BOOL bRet = m_tab.GetItem(nMovePage, tcix);
+// 		ATLASSERT(bRet != FALSE);
+// 		if(bRet == FALSE)
+// 			return false;
+
+// 		int nInsertItem = (nInsertBeforePage > nMovePage) ? nInsertBeforePage + 1 : nInsertBeforePage;
+// 		int nNewItem = m_tab.InsertItem(nInsertItem, tcix);
+// 		ATLASSERT(nNewItem == nInsertItem);
+// 		if(nNewItem != nInsertItem)
+// 		{
+// 			ATLVERIFY(m_tab.DeleteItem(nNewItem));
+// 			return false;
+// 		}
+
+// 		if(nMovePage > nInsertBeforePage)
+// 			ATLVERIFY(m_tab.DeleteItem(nMovePage + 1) != FALSE);
+// 		else if(nMovePage < nInsertBeforePage)
+// 			ATLVERIFY(m_tab.DeleteItem(nMovePage) != FALSE);
+
+// 		SetActivePage(nInsertBeforePage);
+// 		T* pT = static_cast<T*>(this);
+// 		pT->OnPageActivated(m_nActivePage);
+
+// 		return true;
+// 	}
+
+// // Implementation overrideables
+// 	bool CreateTabControl()
+// 	{
+// #ifndef _WIN32_WCE
+// 		m_tab.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | TCS_TOOLTIPS, 0, m_nTabID);
+// #else // CE specific
+// 		m_tab.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0, m_nTabID);
+// #endif // _WIN32_WCE
+// 		ATLASSERT(m_tab.m_hWnd != NULL);
+// 		if(m_tab.m_hWnd == NULL)
+// 			return false;
+
+// 		m_tab.SetFont(AtlCreateControlFont());
+// 		m_bInternalFont = true;
+
+// 		m_tab.SetItemExtra(sizeof(TABVIEWPAGE));
+
+// 		T* pT = static_cast<T*>(this);
+// 		m_cyTabHeight = pT->CalcTabHeight();
+
+// 		return true;
+// 	}
+
+// 	int CalcTabHeight()
+// 	{
+// 		int nCount = m_tab.GetItemCount();
+// 		TCITEMEXTRA tcix = { 0 };
+// 		tcix.tciheader.mask = TCIF_TEXT;
+// 		tcix.tciheader.pszText = _T("NS");
+// 		int nIndex = m_tab.InsertItem(nCount, tcix);
+
+// 		RECT rect = { 0, 0, 1000, 1000 };
+// 		m_tab.AdjustRect(FALSE, &rect);
+
+// 		RECT rcWnd = { 0, 0, 1000, rect.top };
+// 		::AdjustWindowRectEx(&rcWnd, m_tab.GetStyle(), FALSE, m_tab.GetExStyle());
+
+// 		int nHeight = rcWnd.bottom - rcWnd.top;
+
+// 		m_tab.DeleteItem(nIndex);
+
+// 		return nHeight;
+// 	}
+
+// 	void ShowTabControl(bool bShow)
+// 	{
+// 		m_tab.ShowWindow(bShow ? SW_SHOWNOACTIVATE : SW_HIDE);
+// 		T* pT = static_cast<T*>(this);
+// 		pT->UpdateLayout();
+// 	}
+
+// 	void UpdateLayout()
+// 	{
+// 		RECT rect = { 0 };
+// 		GetClientRect(&rect);
+
+// 		int cyOffset = 0;
+// 		if(m_tab.IsWindow() && ((m_tab.GetStyle() & WS_VISIBLE) != 0))
+// 		{
+// 			m_tab.SetWindowPos(NULL, 0, 0, rect.right - rect.left, m_cyTabHeight, SWP_NOZORDER);
+// 			cyOffset = m_cyTabHeight;
+// 		}
+
+// 		if(m_nActivePage != -1)
+// 			::SetWindowPos(GetPageHWND(m_nActivePage), NULL, 0, cyOffset, rect.right - rect.left, rect.bottom - rect.top - cyOffset, SWP_NOZORDER);
+// 	}
+
+// 	void UpdateMenu()
+// 	{
+// 		if(m_menu.m_hMenu != NULL)
+// 			BuildWindowMenu(m_menu, m_nMenuItemsCount, m_bEmptyMenuItem, m_bWindowsMenuItem, m_bActivePageMenuItem, m_bActiveAsDefaultMenuItem);
+// 	}
+
+// 	void UpdateTitleBar()
+// 	{
+// 		if(!m_wndTitleBar.IsWindow() || m_lpstrTitleBarBase == NULL)
+// 			return;   // nothing to do
+
+// 		if(m_nActivePage != -1)
+// 		{
+// 			T* pT = static_cast<T*>(this);
+// 			LPCTSTR lpstrTitle = pT->GetPageTitle(m_nActivePage);
+// 			LPCTSTR lpstrDivider = pT->GetTitleDividerText();
+// 			int cchBuffer = m_cchTitleBarLength + lstrlen(lpstrDivider) + lstrlen(m_lpstrTitleBarBase) + 1;
+// 			CTempBuffer<TCHAR, _WTL_STACK_ALLOC_THRESHOLD> buff;
+// 			LPTSTR lpstrPageTitle = buff.Allocate(cchBuffer);
+// 			ATLASSERT(lpstrPageTitle != NULL);
+// 			if(lpstrPageTitle != NULL)
+// 			{
+// 				pT->ShortenTitle(lpstrTitle, lpstrPageTitle, m_cchTitleBarLength + 1);
+// 				SecureHelper::strcat_x(lpstrPageTitle, cchBuffer, lpstrDivider);
+// 				SecureHelper::strcat_x(lpstrPageTitle, cchBuffer, m_lpstrTitleBarBase);
+// 			}
+// 			else
+// 			{
+// 				lpstrPageTitle = m_lpstrTitleBarBase;
+// 			}
+
+// 			m_wndTitleBar.SetWindowText(lpstrPageTitle);
+// 		}
+// 		else
+// 		{
+// 			m_wndTitleBar.SetWindowText(m_lpstrTitleBarBase);
+// 		}
+// 	}
+
+// 	void DrawMoveMark(int nItem)
+// 	{
+// 		T* pT = static_cast<T*>(this);
+
+// 		if(m_nInsertItem != -1)
+// 		{
+// 			RECT rect = { 0 };
+// 			pT->GetMoveMarkRect(rect);
+// 			m_tab.InvalidateRect(&rect);
+// 		}
+
+// 		m_nInsertItem = nItem;
+
+// 		if(m_nInsertItem != -1)
+// 		{
+// 			CClientDC dc(m_tab.m_hWnd);
+
+// 			RECT rect = { 0 };
+// 			pT->GetMoveMarkRect(rect);
+
+// 			CPen pen;
+// 			pen.CreatePen(PS_SOLID, 1, ::GetSysColor(COLOR_WINDOWTEXT));
+// 			CBrush brush;
+// 			brush.CreateSolidBrush(::GetSysColor(COLOR_WINDOWTEXT));
+
+// 			HPEN hPenOld = dc.SelectPen(pen);
+// 			HBRUSH hBrushOld = dc.SelectBrush(brush);
+
+// 			int x = rect.left;
+// 			int y = rect.top;
+// 			POINT ptsTop[3] = { { x, y }, { x + m_cxMoveMark, y }, { x + (m_cxMoveMark / 2), y + m_cyMoveMark } };
+// 			dc.Polygon(ptsTop, 3);
+
+// 			y = rect.bottom - 1;
+// 			POINT ptsBottom[3] = { { x, y }, { x + m_cxMoveMark, y }, { x + (m_cxMoveMark / 2), y - m_cyMoveMark } };
+// 			dc.Polygon(ptsBottom, 3);
+
+// 			dc.SelectPen(hPenOld);
+// 			dc.SelectBrush(hBrushOld);
+// 		}
+// 	}
+
+// 	void GetMoveMarkRect(RECT& rect) const
+// 	{
+// 		m_tab.GetClientRect(&rect);
+
+// 		RECT rcItem = { 0 };
+// 		m_tab.GetItemRect(m_nInsertItem, &rcItem);
+
+// 		if(m_nInsertItem <= m_nActivePage)
+// 		{
+// 			rect.left = rcItem.left - m_cxMoveMark / 2 - 1;
+// 			rect.right = rcItem.left + m_cxMoveMark / 2;
+// 		}
+// 		else
+// 		{
+// 			rect.left = rcItem.right - m_cxMoveMark / 2 - 1;
+// 			rect.right = rcItem.right + m_cxMoveMark / 2;
+// 		}
+// 	}
+
+// 	void SetMoveCursor(bool bCanMove)
+// 	{
+// 		::SetCursor(::LoadCursor(NULL, bCanMove ? IDC_ARROW : IDC_NO));
+// 	}
+
+// 	void GenerateDragImage(int nItem)
+// 	{
+// 		ATLASSERT(IsValidPageIndex(nItem));
+
+// #ifndef _WIN32_WCE
+// 		RECT rcItem = { 0 };
+// 		m_tab.GetItemRect(nItem, &rcItem);
+// 		::InflateRect(&rcItem, 2, 2);   // make bigger to cover selected item
+// #else // CE specific
+// 		nItem;   // avoid level 4 warning
+// 		RECT rcItem = { 0, 0, 40, 20 };
+// #endif // _WIN32_WCE
+
+// 		ATLASSERT(m_ilDrag.m_hImageList == NULL);
+// 		m_ilDrag.Create(rcItem.right - rcItem.left, rcItem.bottom - rcItem.top, ILC_COLORDDB | ILC_MASK, 1, 1);
+
+// 		CClientDC dc(m_hWnd);
+// 		CDC dcMem;
+// 		dcMem.CreateCompatibleDC(dc);
+// 		ATLASSERT(dcMem.m_hDC != NULL);
+// 		dcMem.SetViewportOrg(-rcItem.left, -rcItem.top);
+
+// 		CBitmap bmp;
+// 		bmp.CreateCompatibleBitmap(dc, rcItem.right - rcItem.left, rcItem.bottom - rcItem.top);
+// 		ATLASSERT(bmp.m_hBitmap != NULL);
+
+// 		HBITMAP hBmpOld = dcMem.SelectBitmap(bmp);
+// #ifndef _WIN32_WCE
+// 		m_tab.SendMessage(WM_PRINTCLIENT, (WPARAM)dcMem.m_hDC);
+// #else // CE specific
+// 		dcMem.Rectangle(&rcItem);
+// #endif // _WIN32_WCE
+// 		dcMem.SelectBitmap(hBmpOld);
+
+// 		ATLVERIFY(m_ilDrag.Add(bmp.m_hBitmap, RGB(255, 0, 255)) != -1);
+// 	}
+
+// 	void ShortenTitle(LPCTSTR lpstrTitle, LPTSTR lpstrShortTitle, int cchShortTitle)
+// 	{
+// 		if(lstrlen(lpstrTitle) >= cchShortTitle)
+// 		{
+// 			LPCTSTR lpstrEllipsis = _T("...");
+// 			int cchEllipsis = lstrlen(lpstrEllipsis);
+// 			SecureHelper::strncpy_x(lpstrShortTitle, cchShortTitle, lpstrTitle, cchShortTitle - cchEllipsis - 1);
+// 			SecureHelper::strcat_x(lpstrShortTitle, cchShortTitle, lpstrEllipsis);
+// 		}
+// 		else
+// 		{
+// 			SecureHelper::strcpy_x(lpstrShortTitle, cchShortTitle, lpstrTitle);
+// 		}
+// 	}
+
+// #ifndef _WIN32_WCE
+// 	void UpdateTooltipText(LPNMTTDISPINFO pTTDI)
+// 	{
+// 		ATLASSERT(pTTDI != NULL);
+// 		pTTDI->lpszText = (LPTSTR)GetPageTitle((int)pTTDI->hdr.idFrom);
+// 	}
+// #endif // !_WIN32_WCE
+
+// // Text for menu items and title bar - override to provide different strings
+// 	static LPCTSTR GetEmptyListText()
+// 	{
+// 		return _T("(Empty)");
+// 	}
+
+// 	static LPCTSTR GetWindowsMenuItemText()
+// 	{
+// 		return _T("&Windows...");
+// 	}
+
+// 	static LPCTSTR GetTitleDividerText()
+// 	{
+// 		return _T(" - ");
+// 	}
+
+// // Notifications - override to provide different behavior
+// 	void OnPageActivated(int nPage)
+// 	{
+// 		NMHDR nmhdr = { 0 };
+// 		nmhdr.hwndFrom = m_hWnd;
+// 		nmhdr.idFrom = nPage;
+// 		nmhdr.code = TBVN_PAGEACTIVATED;
+// 		::SendMessage(GetParent(), WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&nmhdr);
+// 	}
+
+// 	void OnContextMenu(int nPage, POINT pt)
+// 	{
+// 		m_tab.ClientToScreen(&pt);
+
+// 		TBVCONTEXTMENUINFO cmi = { 0 };
+// 		cmi.hdr.hwndFrom = m_hWnd;
+// 		cmi.hdr.idFrom = nPage;
+// 		cmi.hdr.code = TBVN_CONTEXTMENU;
+// 		cmi.pt = pt;
+// 		::SendMessage(GetParent(), WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&cmi);
+// 	}   
+//}

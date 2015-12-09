@@ -4,7 +4,7 @@ use atl::{CWindow,NULL_HWND};
 use winapi::*;
 //use user32::*;
 use super::consts::*;
-use misc::ToCU16Str;
+use wtl::ToCU16Str;
 use std::ops::{Deref,DerefMut};
 /*
 (1)

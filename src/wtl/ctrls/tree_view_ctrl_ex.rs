@@ -4,7 +4,7 @@ use atl::CWindow;
 use winapi::*;
 //use user32;
 use std::mem;
-use misc::ToCU16Str;
+use wtl::ToCU16Str;
 use super::CTreeViewCtrl;
 use std::ops::{Deref,DerefMut};
 

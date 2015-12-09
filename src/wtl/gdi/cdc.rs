@@ -9,7 +9,7 @@ use opengl32;
 use std::ops::Drop;
 use atl::NULL_HWND;
 
-use misc::ToCU16Str;
+use wtl::ToCU16Str;
 
 ////////////////////////////////////////////
 /// only operate on HDC,but not owened

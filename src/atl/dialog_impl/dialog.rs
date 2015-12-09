@@ -12,7 +12,7 @@ use atl::{thunk,Event,Handler,HandleKey};
 use atl::cwindow::*;
 use super::DlgMsg;
 
-use ctrls::BtnMsg;
+use wtl::ctrls::BtnMsg;
 
 type DLGPROC2 = unsafe extern "system" fn(HWND, u32, u64, i64) -> i64;
 

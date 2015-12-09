@@ -3,7 +3,7 @@ use std;
 use winapi::*;
 use user32;
 use shell32;
-use misc::ToCU16Str;
+use wtl::ToCU16Str;
 use std::mem;
 
 pub const NULL_HWND  : HWND  = 0 as HWND;
